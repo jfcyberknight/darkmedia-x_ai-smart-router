@@ -2,6 +2,34 @@
 
 API unique sur **Vercel** que toutes vos applications peuvent appeler. Elle route les requêtes vers les APIs IA disponibles (Gemini → Groq → autres) avec **fallback automatique** en cas d’erreur ou de quota.
 
+## Structure du projet
+
+```text
+ai-smart-router/
+├── api/                    # Endpoints Vercel (serverless)
+│   ├── chat.js             # POST /api/chat — routage IA
+│   └── health.js           # GET /api/health
+├── lib/
+│   ├── router.js           # Ordre des providers et fallback
+│   └── providers/
+│       ├── gemini.js       # Provider Gemini
+│       └── groq.js         # Provider Groq
+├── scripts/
+│   ├── vercel-env-push.js  # Pousse .env vers Vercel
+│   ├── env-sync.js         # Sync .env → .env.example + Vercel
+│   ├── test-providers.js   # Test local des providers
+│   └── test-api.js         # Test HTTP /api/chat
+├── .env.example            # Modèle des variables (sans valeurs)
+├── vercel.json             # Config déploiement Vercel
+├── package.json
+├── CHANGELOG.md            # Historique des versions (Keep a Changelog)
+└── README.md               # Ce fichier
+```
+
+*(Non versionnés : `.env`, `.vercel`, `node_modules`.)*
+
+---
+
 ## Fonctionnement
 
 1. **Un seul endpoint** : `POST /api/chat`
@@ -128,4 +156,12 @@ Prérequis : **vercel login** puis **vercel link** (si l’erreur « not_linked 
 
 ---
 
+## Maintenance & qualité
+
+Ce projet suit les standards **prompt-ai** :
+- **Keep a Changelog** pour l'historique des modifications (`CHANGELOG.md`).
+- **Semantic Versioning (SemVer)** via `package.json` → `version`.
+- README synchronisé avec le code (rôle « Gardien du README »).
+
+---
 *API prête pour Gemini, Groq et extensible pour d’autres fournisseurs.*
