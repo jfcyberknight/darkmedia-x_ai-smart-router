@@ -8,14 +8,14 @@ Documentation des endpoints exposés par l’API (Vercel serverless).
 
 ## Authentification
 
-Tous les endpoints sont protégés par un secret partagé.
+Les endpoints **protégés** (ex. `POST /api/chat`) exigent un secret partagé. **`GET /` et `GET /api/health` sont publics** (pas d’auth, pour sondes et monitoring).
 
 - **Variable d’environnement** : `API_SECRET` (minimum 8 caractères).
-- **En-têtes acceptés** :
+- **En-têtes acceptés** (endpoints protégés) :
   - `Authorization: Bearer <API_SECRET>`
   - `X-API-Key: <API_SECRET>`
 
-Si la clé est absente ou invalide, les réponses sont en **401** avec un body JSON `{ "error": "…" }`.
+Si la clé est absente ou invalide sur un endpoint protégé, la réponse est **401** avec un body JSON `{ "error": "…" }`.
 
 ---
 
@@ -96,14 +96,14 @@ curl -X POST "https://votre-projet.vercel.app/api/chat" \
 
 ### 2. GET `/api/health` (et `GET /`)
 
-Vérification de l’état du service et liste des providers configurés. La racine **`GET /`** est réécrite vers `/api/health` (même réponse, évite un 404).
+Vérification de l’état du service et liste des providers configurés. La racine **`GET /`** est réécrite vers `/api/health` (même réponse, évite un 404). **Public** : aucune authentification requise (sondes, monitoring, load balancers).
 
 #### Requête
 
 | Élément | Détail |
 |---------|--------|
 | **Méthode** | `GET` |
-| **Headers** | `Authorization: Bearer <API_SECRET>` ou `X-API-Key: <API_SECRET>` |
+| **Headers** | Aucun requis. |
 
 Pas de body.
 
@@ -127,14 +127,12 @@ Pas de body.
 
 | Code | Signification |
 |------|----------------|
-| **401** | Clé API manquante ou invalide. |
 | **405** | Méthode autre que GET. |
 
 #### Exemple cURL
 
 ```bash
-curl -X GET "https://votre-projet.vercel.app/api/health" \
-  -H "Authorization: Bearer VOTRE_API_SECRET"
+curl -X GET "https://votre-projet.vercel.app/api/health"
 ```
 
 ---
