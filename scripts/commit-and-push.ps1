@@ -2,7 +2,7 @@
 .SYNOPSIS
     commit-and-push.ps1
 .DESCRIPTION
-    Commit et push en une commande : sync .env.preview vers Vercel (preview), git add/commit/push, puis tests API déployée.
+    Commit et push en une commande : sync .env de la branche courante vers Vercel (local→development, preview→preview, main→production), git add/commit/push, puis tests API déployée.
     Usage: .\scripts\commit-and-push.ps1 "message de commit"
            .\scripts\commit-and-push.ps1 -Production "message"  # + vercel --prod (déploiement production)
 #>
@@ -26,7 +26,9 @@ if (-not $Message.Trim()) {
 $CurrentBranch = git rev-parse --abbrev-ref HEAD 2>$null
 Write-Banner "COMMIT & PUSH"
 Write-Info "Message: $Message"
-Write-Info "Branche: $CurrentBranch (push -> Vercel $(if ($CurrentBranch -eq 'main') { 'Production' } else { 'Preview' }))"
+$VercelEnv = switch ($CurrentBranch) { 'main' { 'Production' } 'local' { 'Development' } default { 'Preview' } }
+$EnvFile = switch ($CurrentBranch) { 'main' { '.env.production' } 'local' { '.env.local' } default { '.env.preview' } }
+Write-Info "Branche: $CurrentBranch ($EnvFile -> Vercel $VercelEnv)"
 Write-Info "Racine: $Root"
 if ($Production) {
     Write-Info "Deploiement Vercel : PRODUCTION force (vercel --prod)."
@@ -49,12 +51,12 @@ if (-not $RemoteRef) {
     Write-Info "Branche $CurrentBranch deja sur origin."
 }
 
-# --- Etape 1 : Sync .env.preview vers Vercel (preview) + .env.example
-Write-EtapeHeader -Numero 1 -Titre "Sync env (preview)" -Pourquoi "Pousser .env.preview vers Vercel (preview) et mettre a jour .env.example."
+# --- Etape 1 : Sync .env de la branche vers Vercel + .env.example
+Write-EtapeHeader -Numero 1 -Titre "Sync env (branche)" -Pourquoi "Pousser le .env de la branche courante vers Vercel et mettre a jour .env.example."
 Write-Step "npm run env:sync..."
 npm run env:sync
 if ($LASTEXITCODE -ne 0) {
-    Write-Fail "env:sync a echoue (ex. .env.preview absent ou vercel non lie)."
+    Write-Fail "env:sync a echoue (ex. fichier .env de la branche absent ou vercel non lie)."
     exit 1
 }
 Write-Success "Sync terminee."

@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * Synchronise les clés du .env partout où il faut :
+ * Synchronise les clés du .env de la branche courante :
  * 1. Met à jour .env.example avec les noms des nouvelles clés (sans valeur)
  * 2. Si le projet n'est pas lié à Vercel, lance automatiquement vercel link --yes
- * 3. Pousse les variables vers Vercel (environnement preview)
+ * 3. Pousse les variables vers Vercel (environnement selon branche : local→development, preview→preview, main→production)
  *
  * Usage: npm run env:sync
- * À lancer après avoir ajouté ou modifié une clé dans .env.preview
+ * Fichier utilisé : .env.local (branche local), .env.preview (branche preview), .env.production (branche main).
  */
 
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { getEnvFilePath, getVercelEnv, getCurrentBranch, getEnvFileName } = require('./env-resolver');
 
 const ROOT = path.resolve(__dirname, '..');
-const ENV_FILE = path.join(ROOT, '.env.preview');
 const EXAMPLE_FILE = path.join(ROOT, '.env.example');
 const VERCEL_PROJECT_JSON = path.join(ROOT, '.vercel', 'project.json');
 
@@ -69,9 +69,9 @@ function getKeysFromEnvContent(content) {
   return keys;
 }
 
-function runVercelPush() {
+function runVercelPush(envFile, vercelEnv) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [path.join(__dirname, 'vercel-env-push.js'), path.join(ROOT, '.env.preview'), '--env', 'preview'], {
+    const child = spawn('node', [path.join(__dirname, 'vercel-env-push.js'), envFile, '--env', vercelEnv], {
       cwd: ROOT,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -82,8 +82,13 @@ function runVercelPush() {
 }
 
 async function main() {
+  const branch = getCurrentBranch();
+  const ENV_FILE = getEnvFilePath(ROOT);
+  const vercelEnv = getVercelEnv();
+  const envFileName = getEnvFileName();
+
   if (!fs.existsSync(ENV_FILE)) {
-    console.error('❌ Fichier .env.preview introuvable.');
+    console.error('❌ Fichier', envFileName, 'introuvable (branche:', branch, ').');
     process.exit(1);
   }
 
@@ -102,7 +107,7 @@ async function main() {
     console.log('📝 .env.example déjà à jour.');
   }
 
-  console.log('\n📤 Pousse vers Vercel...\n');
+  console.log('\n📤 Pousse vers Vercel (' + vercelEnv + ') depuis', envFileName, '...\n');
   if (!isVercelLinked()) {
     try {
       await runVercelLink();
@@ -114,8 +119,8 @@ async function main() {
       process.exit(1);
     }
   }
-  await runVercelPush();
-  console.log('\n✅ Synchronisation terminée (Vercel preview + .env.example).');
+  await runVercelPush(ENV_FILE, vercelEnv);
+  console.log('\n✅ Synchronisation terminée (Vercel', vercelEnv, '+ .env.example).');
 }
 
 main().catch((err) => {

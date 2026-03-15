@@ -19,7 +19,8 @@ ai-smart-router/
 │       └── groq.js         # Provider Groq
 ├── scripts/
 │   ├── vercel-env-push.js  # Pousse .env vers Vercel
-│   ├── env-sync.js         # Sync .env.preview → .env.example + Vercel (preview)
+│   ├── env-resolver.js     # Branche courante → .env (local/preview/production)
+│   ├── env-sync.js         # Sync .env de la branche → .env.example + Vercel
 │   ├── test-providers.js   # Test local des providers
 │   ├── test-api.js         # Test HTTP /api/chat
 │   ├── commit-and-push.ps1 # Commit + push + tests (PowerShell)
@@ -33,6 +34,34 @@ ai-smart-router/
 ```
 
 *(Non versionnés : `.env`, `.env.local`, `.env.preview`, `.env.production`, `.vercel`, `node_modules`.)*
+
+---
+
+## Branches et environnements
+
+Le projet utilise **trois branches** sur GitHub, chacune avec son propre fichier `.env` :
+
+| Branche (Git) | Fichier .env       | Environnement Vercel |
+|---------------|--------------------|------------------------|
+| `local`       | `.env.local`       | development             |
+| `preview`     | `.env.preview`     | preview                |
+| `main`        | `.env.production`   | production             |
+
+Tous les scripts NPM (`test:providers`, `test:api`, `test:api:prod`, `env:sync`) **détectent la branche courante** et chargent le fichier correspondant. Aucune option à passer : il suffit de se placer sur la branche voulue.
+
+**Créer les branches si besoin :**
+```bash
+# Créer et pousser la branche local
+git checkout -b local
+git push -u origin local
+
+# Créer et pousser la branche preview
+git checkout -b preview
+git push -u origin preview
+
+# Revenir sur main
+git checkout main
+```
 
 ---
 
@@ -56,7 +85,7 @@ ai-smart-router/
    ```
 
 3. Configurer les variables d’environnement :  
-   Fichiers par environnement (non versionnés) : **`.env.local`** (dev local), **`.env.preview`** (déploiements preview / branche preview), **`.env.production`** (prod). **Tous les scripts NPM** (`test:providers`, `test:api`, `test:api:prod`, `env:sync`) lisent **`.env.preview`**. Remplir `.env.preview` puis **`npm run env:sync`** pour pousser vers Vercel (environnement **preview**). Prérequis : **vercel login** puis **vercel link** (une fois par dépôt). Sinon, définir les variables à la main : **Project → Settings → Environment Variables**.
+   Fichiers par branche (non versionnés) : **`.env.local`** (branche `local`), **`.env.preview`** (branche `preview`), **`.env.production`** (branche `main`). Les scripts lisent automatiquement le fichier de la branche courante. Remplir le `.env` correspondant puis **`npm run env:sync`** pour pousser vers Vercel (environnement selon la branche : development / preview / production). Prérequis : **vercel login** puis **vercel link** (une fois par dépôt). Sinon, définir les variables à la main : **Project → Settings → Environment Variables**.
    - **`API_SECRET`** — Secret pour restreindre l’accès (toi uniquement). Min. 8 caractères. Sans lui, toutes les requêtes reçoivent 401. Pour en générer une : `python scripts/generate-api-secret.py` (ou `py -3 scripts/generate-api-secret.py` sous Windows).
    - `GEMINI_API_KEY` — [Créer une clé](https://aistudio.google.com/apikey) (API REST avec `X-goog-api-key`, modèle `gemini-flash-latest`)
    - `GROQ_API_KEY` — [Créer une clé](https://console.groq.com/keys)
@@ -140,16 +169,16 @@ Par défaut cible `https://ai-smart-router.vercel.app`. Pour une autre URL : `no
 
 ## Injection des clés API vers Vercel (script)
 
-**Commande à utiliser après avoir ajouté une clé dans `.env` :**
+**Commande à utiliser après avoir ajouté une clé dans le `.env` de votre branche :**
 
 ```bash
 npm run env:sync
 ```
 
-Cela met à jour `.env.example` avec les noms des nouvelles clés, puis pousse toutes les variables vers Vercel (production + development). Une seule commande pour tout synchroniser.
+Cela met à jour `.env.example` avec les noms des nouvelles clés, puis pousse les variables vers Vercel **selon la branche courante** (branche `local` → development, `preview` → preview, `main` → production). Une seule commande pour tout synchroniser.
 
 **Automatisation** : un hook Git **pre-push** exécute `env:sync` avant chaque `git push` (installé via `npm run prepare` au premier `npm install`). Pour pousser sans lancer la synchro : `git push --no-verify`.  
-**Script tout-en-un (PowerShell)** : `.\scripts\commit-and-push.ps1 "message de commit"` enchaîne sync env (preview), git add/commit/push et tests API déployée ; `-Production` pour forcer `vercel --prod`.
+**Script tout-en-un (PowerShell)** : `.\scripts\commit-and-push.ps1 "message de commit"` enchaîne sync env (selon la branche), git add/commit/push et tests API déployée ; `-Production` pour forcer `vercel --prod`.
 
 ```bash
 # Variante : pousser vers Vercel uniquement (sans toucher à .env.example)

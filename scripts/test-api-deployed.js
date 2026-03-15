@@ -2,17 +2,18 @@
 /**
  * Teste l'API déployée (health + chat) depuis ici.
  * Usage: node scripts/test-api-deployed.js [URL]
- * URL par défaut: https://ai-smart-router.vercel.app (ou API_BASE_URL dans .env.preview)
- * Lit .env.preview pour API_SECRET.
+ * URL par défaut: https://ai-smart-router.vercel.app (ou API_BASE_URL dans le .env de la branche)
+ * Lit le .env de la branche courante (local/preview/main).
  */
 
 const fs = require('fs');
 const path = require('path');
+const { getEnvFilePath } = require('./env-resolver');
 
 const ROOT = path.resolve(__dirname, '..');
 
 function loadEnv() {
-  const envPath = path.join(ROOT, '.env.preview');
+  const envPath = getEnvFilePath(ROOT);
   if (!fs.existsSync(envPath)) return {};
   const content = fs.readFileSync(envPath, 'utf8');
   const vars = {};
@@ -100,7 +101,7 @@ async function testChat() {
 
 async function run() {
   if (!apiSecret) {
-    console.error('❌ API_SECRET manquant dans .env.preview (requis pour l’API déployée).');
+    console.error('❌ API_SECRET manquant (requis pour l’API déployée).');
     process.exit(1);
   }
   console.log('🧪 Test API déployée:', baseNorm, '\n');
