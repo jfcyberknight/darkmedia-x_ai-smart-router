@@ -3,10 +3,10 @@
  * Synchronise les clés du .env partout où il faut :
  * 1. Met à jour .env.example avec les noms des nouvelles clés (sans valeur)
  * 2. Si le projet n'est pas lié à Vercel, lance automatiquement vercel link --yes
- * 3. Pousse les variables vers Vercel (production + development)
+ * 3. Pousse les variables vers Vercel (environnement preview)
  *
  * Usage: npm run env:sync
- * À lancer après avoir ajouté ou modifié une clé dans .env
+ * À lancer après avoir ajouté ou modifié une clé dans .env.preview
  */
 
 const fs = require('fs');
@@ -14,11 +14,11 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const ENV_FILE = path.join(ROOT, '.env');
+const ENV_FILE = path.join(ROOT, '.env.preview');
 const EXAMPLE_FILE = path.join(ROOT, '.env.example');
 const VERCEL_PROJECT_JSON = path.join(ROOT, '.vercel', 'project.json');
 
-const EXCLUDE = new Set(['NODE_ENV', 'DEBUG', 'VERCEL', 'CI']);
+const EXCLUDE = new Set(['NODE_ENV', 'DEBUG', 'VERCEL', 'CI', 'API_SECRET']);
 
 function isVercelLinked() {
   try {
@@ -71,7 +71,7 @@ function getKeysFromEnvContent(content) {
 
 function runVercelPush() {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [path.join(__dirname, 'vercel-env-push.js')], {
+    const child = spawn('node', [path.join(__dirname, 'vercel-env-push.js'), path.join(ROOT, '.env.preview'), '--env', 'preview'], {
       cwd: ROOT,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -83,7 +83,7 @@ function runVercelPush() {
 
 async function main() {
   if (!fs.existsSync(ENV_FILE)) {
-    console.error('❌ Fichier .env introuvable.');
+    console.error('❌ Fichier .env.preview introuvable.');
     process.exit(1);
   }
 
@@ -115,7 +115,7 @@ async function main() {
     }
   }
   await runVercelPush();
-  console.log('\n✅ Synchronisation terminée (Vercel + .env.example).');
+  console.log('\n✅ Synchronisation terminée (Vercel preview + .env.example).');
 }
 
 main().catch((err) => {

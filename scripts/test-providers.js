@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Teste chaque provider dont la clé API est présente dans .env.
+ * Teste chaque provider dont la clé API est présente dans .env.preview.
  * Détecte automatiquement les variables *_API_KEY et teste les providers
  * qui ont un module dans lib/providers/<id>.js (id = préfixe en minuscules).
  * Usage: node scripts/test-providers.js
@@ -13,7 +13,7 @@ const ROOT = path.resolve(__dirname, '..');
 const PROVIDERS_DIR = path.join(ROOT, 'lib', 'providers');
 
 function loadEnv() {
-  const envPath = path.join(ROOT, '.env');
+  const envPath = path.join(ROOT, '.env.preview');
   if (!fs.existsSync(envPath)) return {};
   const content = fs.readFileSync(envPath, 'utf8');
   const vars = {};
@@ -33,7 +33,7 @@ function loadEnv() {
 }
 
 /**
- * Retourne la liste des providers détectés depuis .env :
+ * Retourne la liste des providers détectés depuis .env.preview :
  * clés *_API_KEY (hors API_SECRET) → id = préfixe en minuscules.
  */
 function getProviderKeysFromEnv(env) {
@@ -102,17 +102,17 @@ async function run() {
   const providerKeys = getProviderKeysFromEnv(env);
 
   if (providerKeys.length === 0) {
-    console.error('❌ Aucune clé *_API_KEY trouvée dans .env (ex. GEMINI_API_KEY, GROQ_API_KEY).');
+    console.error('❌ Aucune clé *_API_KEY trouvée dans .env.preview (ex. GEMINI_API_KEY, GROQ_API_KEY).');
     process.exit(1);
   }
 
-  console.log('🧪 Test des providers (clés trouvées dans .env)\n');
+  console.log('🧪 Test des providers (clés trouvées dans .env.preview)\n');
 
   for (const item of providerKeys) {
     await testOneProvider(env, item);
   }
 
-  // Test du router (fallback) : on injecte tout le .env
+  // Test du router (fallback) : on injecte tout le .env.preview
   const routerProviders = providerKeys.filter((p) => hasProviderModule(p.id)).map((p) => p.id);
   if (routerProviders.length > 0) {
     for (const key of Object.keys(env)) {

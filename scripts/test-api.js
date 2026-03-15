@@ -3,7 +3,7 @@
  * Teste l'endpoint POST /api/chat (API locale ou déployée).
  * Si l'URL cible localhost et que le serveur ne répond pas, démarre automatiquement vercel dev.
  * Usage: node scripts/test-api.js [URL]
- * Lit .env pour API_SECRET (obligatoire si l'API est protégée).
+ * Lit .env.preview pour API_SECRET (obligatoire si l'API est protégée).
  */
 
 const fs = require('fs');
@@ -16,7 +16,7 @@ const SERVER_START_TIMEOUT_MS = 45000;
 const POLL_INTERVAL_MS = 800;
 
 function loadEnv() {
-  const envPath = path.join(ROOT, '.env');
+  const envPath = path.join(ROOT, '.env.preview');
   if (!fs.existsSync(envPath)) return {};
   const content = fs.readFileSync(envPath, 'utf8');
   const vars = {};

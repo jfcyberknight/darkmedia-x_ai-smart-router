@@ -2,6 +2,7 @@
 /**
  * Pousse les variables d'environnement depuis un fichier .env vers Vercel.
  * Usage: node scripts/vercel-env-push.js [fichier.env] [--env production|preview|development]
+ * Par défaut : .env.preview et environnement preview.
  *
  * Prérequis:
  *   1. vercel CLI installée et connectée (vercel login)
@@ -27,11 +28,11 @@ function getCurrentGitBranch() {
   }
 }
 
-// Variables à ne pas pousser vers Vercel (usage local uniquement)
-const EXCLUDE = new Set(['NODE_ENV', 'DEBUG', 'VERCEL', 'CI']);
+// Variables à ne pas pousser vers Vercel (clé fournie par les clients, à définir manuellement dans Vercel si besoin)
+const EXCLUDE = new Set(['NODE_ENV', 'DEBUG', 'VERCEL', 'CI', 'API_SECRET']);
 
-// Par défaut : production + development (preview exige un dépôt Git connecté sur Vercel)
-const ENVIRONMENTS = ['production', 'development'];
+// Par défaut : preview (scripts du projet utilisent preview)
+const ENVIRONMENTS = ['preview'];
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -88,7 +89,7 @@ function addToVercel(name, value, environment, gitBranch) {
 
 async function main() {
   const args = process.argv.slice(2);
-  let envFile = path.join(ROOT, '.env');
+  let envFile = path.join(ROOT, '.env.preview');
   let envFilter = ENVIRONMENTS;
 
   for (let i = 0; i < args.length; i++) {

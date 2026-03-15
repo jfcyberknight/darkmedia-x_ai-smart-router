@@ -19,9 +19,11 @@ ai-smart-router/
 │       └── groq.js         # Provider Groq
 ├── scripts/
 │   ├── vercel-env-push.js  # Pousse .env vers Vercel
-│   ├── env-sync.js         # Sync .env → .env.example + Vercel
+│   ├── env-sync.js         # Sync .env.preview → .env.example + Vercel (preview)
 │   ├── test-providers.js   # Test local des providers
 │   ├── test-api.js         # Test HTTP /api/chat
+│   ├── commit-and-push.ps1 # Commit + push + tests (PowerShell)
+│   ├── lib-output.ps1      # Helpers affichage (commit-and-push.ps1)
 │   └── generate-api-secret.py  # Génère une clé API_SECRET
 ├── .env.example            # Modèle des variables (sans valeurs)
 ├── vercel.json             # Rewrite / → /api/health (évite 404 à la racine)
@@ -30,7 +32,7 @@ ai-smart-router/
 └── README.md               # Ce fichier
 ```
 
-*(Non versionnés : `.env`, `.vercel`, `node_modules`.)*
+*(Non versionnés : `.env`, `.env.local`, `.env.preview`, `.env.production`, `.vercel`, `node_modules`.)*
 
 ---
 
@@ -53,8 +55,8 @@ ai-smart-router/
    vercel
    ```
 
-3. Configurer les variables d’environnement dans **Vercel** :  
-   Remplir `.env` puis lancer **`npm run env:sync`** pour synchroniser partout (Vercel + mise à jour de `.env.example`). Alternative : `npm run env:push` pour Vercel uniquement. Prérequis : **vercel login** puis **vercel link** (une fois par dépôt). Sinon, définir les variables à la main : **Project → Settings → Environment Variables**.
+3. Configurer les variables d’environnement :  
+   Fichiers par environnement (non versionnés) : **`.env.local`** (dev local), **`.env.preview`** (déploiements preview / branche preview), **`.env.production`** (prod). **Tous les scripts NPM** (`test:providers`, `test:api`, `test:api:prod`, `env:sync`) lisent **`.env.preview`**. Remplir `.env.preview` puis **`npm run env:sync`** pour pousser vers Vercel (environnement **preview**). Prérequis : **vercel login** puis **vercel link** (une fois par dépôt). Sinon, définir les variables à la main : **Project → Settings → Environment Variables**.
    - **`API_SECRET`** — Secret pour restreindre l’accès (toi uniquement). Min. 8 caractères. Sans lui, toutes les requêtes reçoivent 401. Pour en générer une : `python scripts/generate-api-secret.py` (ou `py -3 scripts/generate-api-secret.py` sous Windows).
    - `GEMINI_API_KEY` — [Créer une clé](https://aistudio.google.com/apikey) (API REST avec `X-goog-api-key`, modèle `gemini-flash-latest`)
    - `GROQ_API_KEY` — [Créer une clé](https://console.groq.com/keys)
@@ -146,7 +148,8 @@ npm run env:sync
 
 Cela met à jour `.env.example` avec les noms des nouvelles clés, puis pousse toutes les variables vers Vercel (production + development). Une seule commande pour tout synchroniser.
 
-**Automatisation** : un hook Git **pre-push** exécute `env:sync` avant chaque `git push` (installé via `npm run prepare` au premier `npm install`). Pour pousser sans lancer la synchro : `git push --no-verify`.
+**Automatisation** : un hook Git **pre-push** exécute `env:sync` avant chaque `git push` (installé via `npm run prepare` au premier `npm install`). Pour pousser sans lancer la synchro : `git push --no-verify`.  
+**Script tout-en-un (PowerShell)** : `.\scripts\commit-and-push.ps1 "message de commit"` enchaîne sync env (preview), git add/commit/push et tests API déployée ; `-Production` pour forcer `vercel --prod`.
 
 ```bash
 # Variante : pousser vers Vercel uniquement (sans toucher à .env.example)
