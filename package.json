@@ -12,7 +12,8 @@
     "test": "node scripts/test-providers.js",
     "test:providers": "node scripts/test-providers.js",
     "test:api": "node scripts/test-api.js",
-    "test:api:prod": "node scripts/test-api-deployed.js"
+    "test:api:prod": "node scripts/test-api-deployed.js",
+    "branch-protection": "node scripts/configure-branch-protection.js"
   },
   "keywords": ["ai", "vercel", "gemini", "groq", "router", "api"],
   "author": "",

@@ -23,6 +23,7 @@ ai-smart-router/
 │   ├── env-sync.js         # Sync .env de la branche → .env.example + Vercel
 │   ├── test-providers.js   # Test local des providers
 │   ├── test-api.js         # Test HTTP /api/chat
+│   ├── configure-branch-protection.js  # Protection main via gh (PR obligatoire)
 │   ├── commit-and-push.ps1 # Commit + push + tests (PowerShell)
 │   ├── lib-output.ps1      # Helpers affichage (commit-and-push.ps1)
 │   └── generate-api-secret.py  # Génère une clé API_SECRET
@@ -62,6 +63,18 @@ git push -u origin preview
 # Revenir sur main
 git checkout main
 ```
+
+**Protection de la branche `main` (recommandé)**  
+Le hook **pre-push** empêche de pousser directement vers `main` ; il faut passer par une branche puis une Pull Request. Pour appliquer la même règle côté serveur (même avec `git push --no-verify`), utilisez **GitHub CLI** :
+
+```bash
+# Prérequis : gh installé et authentifié (gh auth login)
+npm run branch-protection
+```
+
+Cela configure sur le dépôt distant : **Pull Request obligatoire** avant merge sur `main`, sans approbation requise. Pour une autre branche : `node scripts/configure-branch-protection.js nom-de-branche`.
+
+**À la main** (sans gh) : **Settings** → **Branches** → **Add branch protection rule** → pattern `main` → cocher **Require a pull request before merging** → Save.
 
 ---
 
