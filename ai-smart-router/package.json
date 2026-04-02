@@ -1,0 +1,31 @@
+{
+  "name": "ai-smart-router",
+  "version": "2.0.25",
+  "description": "API Vercel qui route les requêtes IA vers Gemini, Groq et autres providers avec fallback automatique",
+  "main": "router.js",
+  "scripts": {
+    "start:local": "vercel dev",
+    "deploy": "vercel --prod",
+    "prepare": "node scripts/install-git-hooks.js",
+    "env:push": "node scripts/vercel-env-push.js",
+    "env:sync": "node scripts/env-sync.js",
+    "test": "node --test tests/validate-chat.test.js tests/auth.test.js",
+    "test:providers": "node scripts/test-providers.js",
+    "test:api": "node scripts/test-api.js",
+    "test:api:prod": "node scripts/test-api-deployed.js"
+  },
+  "keywords": [
+    "ai",
+    "vercel",
+    "gemini",
+    "groq",
+    "router",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

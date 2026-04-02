@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "functions/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/functions/health" },
+    { "source": "/api/(.*)", "destination": "/functions/$1" }
+  ]
+}

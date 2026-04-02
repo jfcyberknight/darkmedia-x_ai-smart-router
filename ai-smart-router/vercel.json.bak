@@ -1,0 +1,7 @@
+{
+  "buildCommand": "",
+  "env": {
+    "HUSKY": "0"
+  },
+  "rewrites": [{ "source": "/", "destination": "/api/health" }]
+}
