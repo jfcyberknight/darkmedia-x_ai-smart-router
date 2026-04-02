@@ -1,9 +1,16 @@
 {
-  "name": "ai-smart-router",
+  "name": "@jfcyberknight/ai-smart-router",
   "version": "2.0.26",
   "description": "API Vercel qui route les requêtes IA vers Gemini, Groq et autres providers avec fallback automatique",
   "packageManager": "pnpm@9.1.0+",
   "main": "router.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jfcyberknight/darkmedia-x_api-ai-smart-router.git"
+  },
   "scripts": {
     "start:local": "vercel dev",
     "deploy": "vercel --prod",

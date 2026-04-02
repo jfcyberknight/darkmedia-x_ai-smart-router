@@ -1,0 +1,41 @@
+name: 🚀 Publish NPM Package
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@jfcyberknight'
+
+      - name: 🔧 Set up pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.1.0
+
+      - name: 📥 Install dependencies
+        run: |
+          cd ai-smart-router
+          pnpm install
+
+      - name: 🎁 Publish to GitHub Packages
+        run: |
+          cd ai-smart-router
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

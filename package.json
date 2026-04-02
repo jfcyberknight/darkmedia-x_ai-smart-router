@@ -1,24 +1,26 @@
 {
-  "name": "ai-smart-router",
-  "version": "2.0.0",
+  "name": "darkmedia-x-ai-smart-router",
+  "version": "2.0.26",
+  "workspaces": [
+    "ai-smart-router"
+  ],
   "description": "API Vercel qui route les requêtes IA vers Gemini, Groq et autres providers avec fallback automatique",
-  "main": "router.js",
+  "main": "ai-smart-router/router.js",
   "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod",
-    "prepare": "node scripts/install-git-hooks.js",
-    "env:push": "node scripts/vercel-env-push.js",
-    "env:sync": "node scripts/env-sync.js",
-    "test": "node scripts/test-providers.js",
-    "test:providers": "node scripts/test-providers.js",
-    "test:api": "node scripts/test-api.js",
-    "test:api:prod": "node scripts/test-api-deployed.js"
+    "dev": "cd ai-smart-router && vercel dev",
+    "deploy": "cd ai-smart-router && vercel --prod",
+    "prepare": "cd ai-smart-router && node scripts/install-git-hooks.js",
+    "env:push": "cd ai-smart-router && node scripts/vercel-env-push.js",
+    "env:sync": "cd ai-smart-router && node scripts/env-sync.js",
+    "test": "cd ai-smart-router && node --test tests/validate-chat.test.js tests/auth.test.js",
+    "test:providers": "cd ai-smart-router && node scripts/test-providers.js",
+    "test:api": "cd ai-smart-router && node scripts/test-api.js",
+    "test:api:prod": "cd ai-smart-router && node scripts/test-api-deployed.js"
   },
   "keywords": ["ai", "vercel", "gemini", "groq", "router", "api"],
-  "author": "",
+  "author": "Darkmedia-X",
   "license": "ISC",
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {}
+  }
 }
