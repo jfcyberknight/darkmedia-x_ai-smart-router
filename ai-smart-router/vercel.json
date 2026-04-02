@@ -1,4 +1,6 @@
 {
+  "buildCommand": "echo 'Build complete'",
+  "outputDirectory": ".",
   "functions": {
     "functions/*.js": {
       "runtime": "nodejs18.x"
