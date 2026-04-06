@@ -11,16 +11,30 @@
     "deploy": "cd ai-smart-router && vercel --prod",
     "prepare": "cd ai-smart-router && node scripts/install-git-hooks.js",
     "env:push": "cd ai-smart-router && node scripts/vercel-env-push.js",
+    "env:push:root": "cd ai-smart-router && node scripts/vercel-env-push.js ../.env",
     "env:sync": "cd ai-smart-router && node scripts/env-sync.js",
-    "test": "cd ai-smart-router && node --test tests/validate-chat.test.js tests/auth.test.js",
+    "test": "cd ai-smart-router && node --test tests/validate-chat.test.js tests/auth.test.js tests/deployed.test.js",
+    "test:deployed": "cd ai-smart-router && node --test tests/deployed.test.js",
     "test:providers": "cd ai-smart-router && node scripts/test-providers.js",
     "test:api": "cd ai-smart-router && node scripts/test-api.js",
-    "test:api:prod": "cd ai-smart-router && node scripts/test-api-deployed.js"
+    "test:api:prod": "cd ai-smart-router && node scripts/test-api-deployed.js",
+    "rag:index": "python index_rag.py",
+    "rag:push": "python push.py",
+    "rag:status": "rag status",
+    "rag:search": "rag search"
   },
-  "keywords": ["ai", "vercel", "gemini", "groq", "router", "api"],
+  "keywords": [
+    "ai",
+    "vercel",
+    "gemini",
+    "groq",
+    "router",
+    "api"
+  ],
   "author": "Darkmedia-X",
   "license": "ISC",
   "engines": {
     "node": ">=18"
-  }
+  },
+  "dependencies": {}
 }

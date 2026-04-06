@@ -45,8 +45,8 @@ function verifySignature(payload, signature, secret) {
  *   - SERVER_SECRET: clé secrète serveur
  */
 function checkClientAuth(req, res) {
-  const clientKey = process.env.CLIENT_KEY;
-  const serverSecret = process.env.SERVER_SECRET;
+  const clientKey = process.env.CLIENT_KEY_AI_SMART_ROUTER;
+  const serverSecret = process.env.SERVER_SECRET_AI_SMART_ROUTER;
 
   // Vérifier que les clés sont configurées
   if (!clientKey || !serverSecret) {
