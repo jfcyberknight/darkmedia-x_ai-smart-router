@@ -65,28 +65,58 @@ module.exports = async (req, res) => {
     const openrouterKey = process.env.OPENROUTER_API_KEY;
     
     let result;
+    let usedProvider = "";
     
-    // Priorité à Fal.ai si la clé est présente et que le modèle commence par 'fal-ai/'
-    // Ou si OpenRouter échoue (implémenté via le try/catch ou switch explicite)
-    
-    const useFal = falKey && (model && model.includes("fal-ai"));
-    
-    if (useFal || (falKey && !openrouterKey)) {
-        console.log("[api/image] Utilisation du provider Fal.ai");
-        const falProvider = require("../lib/providers/fal");
-        result = await falProvider.generate({
-          apiKey: falKey,
-          model: model || falProvider.DEFAULT_MODEL,
-          prompt: finalPrompt,
-        });
-    } else {
-        console.log("[api/image] Utilisation du provider OpenRouter");
-        const openrouterProvider = require("../lib/providers/images");
-        result = await openrouterProvider.generate({
-          apiKey: openrouterKey,
-          model: model || "openai/dall-e-3",
-          prompt: finalPrompt,
-        });
+    // Stratégie : Essayer Fal.ai d'abord si spécifié ou si c'est le seul, sinon OpenRouter
+    const preferFal = falKey && ( (model && model.includes("fal-ai")) || (!openrouterKey) );
+
+    try {
+        if (preferFal) {
+            console.log("[api/image] Tentative avec Fal.ai");
+            const falProvider = require("../lib/providers/fal");
+            result = await falProvider.generate({
+              apiKey: falKey,
+              model: (model && model.includes("fal-ai")) ? model : falProvider.DEFAULT_MODEL,
+              prompt: finalPrompt,
+            });
+            usedProvider = "fal";
+        } else if (openrouterKey) {
+            console.log("[api/image] Tentative avec OpenRouter");
+            const openrouterProvider = require("../lib/providers/images");
+            result = await openrouterProvider.generate({
+              apiKey: openrouterKey,
+              model: model || "openai/dall-e-3",
+              prompt: finalPrompt,
+            });
+            usedProvider = "openrouter";
+        } else {
+            throw new Error("Aucun fournisseur d'image configuré (FAL_KEY ou OPENROUTER_API_KEY manquant)");
+        }
+    } catch (firstErr) {
+        console.warn(`[api/image] Échec du premier provider (${preferFal ? 'Fal' : 'OpenRouter'}):`, firstErr.message);
+        
+        // Fallback si l'autre clé est disponible
+        if (preferFal && openrouterKey) {
+            console.log("[api/image] Fallback sur OpenRouter...");
+            const openrouterProvider = require("../lib/providers/images");
+            result = await openrouterProvider.generate({
+              apiKey: openrouterKey,
+              model: "openai/dall-e-3",
+              prompt: finalPrompt,
+            });
+            usedProvider = "openrouter";
+        } else if (!preferFal && falKey) {
+            console.log("[api/image] Fallback sur Fal.ai...");
+            const falProvider = require("../lib/providers/fal");
+            result = await falProvider.generate({
+              apiKey: falKey,
+              model: falProvider.DEFAULT_MODEL,
+              prompt: finalPrompt,
+            });
+            usedProvider = "fal";
+        } else {
+            throw firstErr; // Pas de fallback possible
+        }
     }
     
     return sendSuccess(
@@ -96,31 +126,10 @@ module.exports = async (req, res) => {
         provider: result.provider,
         model: result.model,
       },
-      "Image générée avec succès"
+      `Image générée avec succès (${usedProvider})`
     );
   } catch (err) {
     console.error("[api/image]", err.message);
-    
-    // Tentative de fallback SI le premier a échoué et que l'autre clé est dispo
-    const falKey = process.env.FAL_KEY;
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
-    
-    if (falKey && err.message.includes("OpenRouter") && !req._falFallback) {
-        console.log("[api/image] Fallback sur Fal.ai suite à erreur OpenRouter");
-        req._falFallback = true;
-        const falProvider = require("../lib/providers/fal");
-        try {
-            const result = await falProvider.generate({
-                apiKey: falKey,
-                model: falProvider.DEFAULT_MODEL,
-                prompt: finalPrompt,
-            });
-            return sendSuccess(res, { imageUrl: result.imageUrl, provider: result.provider, model: result.model }, "Image générée (Fallback Fal.ai)");
-        } catch (fErr) {
-            return sendError(res, `Échec initial et fallback: ${err.message} / ${fErr.message}`, 500);
-        }
-    }
-
     return sendError(res, err.message || "Erreur lors de la génération d'image.", 500);
   }
 };

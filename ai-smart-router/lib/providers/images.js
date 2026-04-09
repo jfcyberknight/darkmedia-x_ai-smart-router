@@ -9,22 +9,33 @@ async function generate({ apiKey, model = "openai/dall-e-3", prompt }) {
 
   console.log(`[Images] Génération avec ${model} via OpenRouter...`);
   
+  const body = { 
+    model,
+    messages: [
+        { role: "user", content: prompt }
+    ]
+  };
+
+  console.log(`[Images] Requête OpenRouter (model):`, model);
+
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "X-Title": "DarkMedia-X Smart Router",
     },
-    body: JSON.stringify({
-      model,
-      prompt, // Pour DALL-E 3 spécifique ou via message selon le modèle
-      messages: [{ role: "user", content: prompt }]
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenRouter Image API: ${res.status} ${err}`);
+    const errText = await res.text();
+    let detail = errText;
+    try {
+        const errJson = JSON.parse(errText);
+        detail = errJson.error?.message || JSON.stringify(errJson);
+    } catch (e) {}
+    throw new Error(`OpenRouter Image API: ${res.status} ${detail}`);
   }
 
   const data = await res.json();

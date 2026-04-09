@@ -113,6 +113,27 @@ describe("🚀 Deployed API Integration Tests", { skip: skipTests }, () => {
     assert.ok(extraction.donnees.nom.includes("Dupont"), "Le nom devrait être extrait correctement");
   });
 
+  it("POST /api/image - Devrait générer une image via OpenRouter ou Fal.ai", async () => {
+    const payload = {
+      prompt: "Un loup terrifiant dans une forêt sombre, style horreur",
+      model: "stabilityai/stable-diffusion-xl-base-1.0"
+    };
+
+    const res = await fetch(`${BASE_URL}/api/image`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    assert.equal(res.status, 200, "Le statut HTTP devrait être 200");
+    assert.equal(data.statut, "actif");
+    assert.ok(data.donnees.imageUrl, "La réponse devrait contenir une URL d'image");
+    assert.ok(data.donnees.imageUrl.startsWith("http"), "L'URL de l'image doit être valide");
+    assert.ok(data.donnees.provider, "Le provider doit être indiqué");
+  });
+
   it("POST /api/chat - Devrait échouer avec 401 si le secret est invalide", async () => {
     const res = await fetch(`${BASE_URL}/api/chat`, {
       method: "POST",

@@ -13,30 +13,30 @@ COLLECTION_NAME = "knowledge_base"
 MODEL_NAME = "all-MiniLM-L6-v2" # 384 dimensions, standard
 
 def init_qdrant():
-    print(f"📡 Connexion à Qdrant: {QDRANT_URL}")
+    print(f"Connexion a Qdrant: {QDRANT_URL}")
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     
-    # Vérifier si la collection existe
+    # Verifier si la collection existe
     collections = client.get_collections().collections
     exists = any(c.name == COLLECTION_NAME for c in collections)
     
     if not exists:
-        print(f"✨ Création de la collection: {COLLECTION_NAME}")
+        print(f"Creation de la collection: {COLLECTION_NAME}")
         client.recreate_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
         )
     else:
-        print(f"📚 Collection existante trouvée: {COLLECTION_NAME}")
+        print(f"Collection existante trouvee: {COLLECTION_NAME}")
         
     return client
 
 def load_model():
-    print(f"🧠 Chargement du modèle d'embeddings: {MODEL_NAME}")
+    print(f"Chargement du modele d'embeddings: {MODEL_NAME}")
     return SentenceTransformer(MODEL_NAME)
 
 def index_files(client, model, directory=".instructions-ai"):
-    print(f"📁 Indexation des fichiers dans: {directory}")
+    print(f"Indexation des fichiers dans: {directory}")
     files = glob.glob(os.path.join(directory, "*.md"))
     
     points = []
@@ -45,10 +45,10 @@ def index_files(client, model, directory=".instructions-ai"):
             content = f.read()
             filename = os.path.basename(file_path)
             
-            # On pourrait découper en chunks ici, mais pour des instructions on prend le fichier entier
-            # ou on découpe par section si nécessaire.
+            # On pourrait decouper en chunks ici, mais pour des instructions on prend le fichier entier
+            # ou on decoupe par section si necessaire.
             
-            print(f"📄 Traitement de: {filename}")
+            print(f"Traitement de: {filename}")
             embedding = model.encode(content).tolist()
             
             points.append(models.PointStruct(
@@ -63,14 +63,14 @@ def index_files(client, model, directory=".instructions-ai"):
             ))
 
     if points:
-        print(f"📤 Envoi de {len(points)} points vers Qdrant...")
+        print(f"Envoi de {len(points)} points vers Qdrant...")
         client.upsert(
             collection_name=COLLECTION_NAME,
             points=points
         )
-        print("✅ Indexation terminée avec succès.")
+        print("Indexation terminee avec succes.")
     else:
-        print("⚠️ Aucun fichier .md trouvé à indexer.")
+        print("Aucun fichier .md trouve a indexer.")
 
 if __name__ == "__main__":
     try:
@@ -78,4 +78,4 @@ if __name__ == "__main__":
         transformer = load_model()
         index_files(q_client, transformer)
     except Exception as e:
-        print(f"❌ Erreur lors de l'indexation: {e}")
+        print(f"Erreur lors de l'indexation: {e}")

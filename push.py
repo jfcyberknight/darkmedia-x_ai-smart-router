@@ -19,15 +19,14 @@ def main():
         print("✅ Rien à committer.")
     else:
         # 2. Git Add & Commit
+        default_msg = "chore: update project and RAG indexing"
         if len(sys.argv) > 1:
             commit_msg = sys.argv[1]
         else:
-            commit_msg = input("📝 Message de commit (Conventional Commits recommandés): ")
+            # On n'utilise plus input() pour ne pas bloquer le script, on prend le défaut
+            commit_msg = default_msg
+            print(f"📝 Utilisation du message par défaut : {commit_msg}")
             
-        if not commit_msg:
-            print("⚠️ Message de commit requis.")
-            return
-
         run_command("git add .")
         ok, _ = run_command(f'git commit -m "{commit_msg}"')
         if not ok: return

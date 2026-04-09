@@ -7,13 +7,17 @@ const DEFAULT_MODEL = "fal-ai/flux/schnell";
 async function generate({ apiKey, model = DEFAULT_MODEL, prompt }) {
   if (!apiKey) throw new Error("FAL_KEY manquante");
 
-  console.log(`[Fal.ai] Génération avec ${model}...`);
+  // Si le modèle commence par 'fal-ai/', on l'utilise tel quel pour l'URL fal.run/fal-ai/...
+  // L'URL attendue est https://fal.run/{model-path}
+  const modelPath = model;
+  
+  console.log(`[Fal.ai] Génération avec ${modelPath}...`);
 
-  const res = await fetch(`https://fal.run/${model}`, {
+  const res = await fetch(`https://fal.run/${modelPath}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Key ${apiKey}`,
+      "Authorization": `Key ${apiKey}`,
     },
     body: JSON.stringify({
       prompt,
@@ -29,9 +33,10 @@ async function generate({ apiKey, model = DEFAULT_MODEL, prompt }) {
   }
 
   const data = await res.json();
-  const imageUrl = data.images?.[0]?.url || data.image?.url;
+  const imageUrl = data.images?.[0]?.url || data.image?.url || data.url;
 
   if (!imageUrl) {
+    console.error("[Fal.ai] Réponse brute:", JSON.stringify(data));
     throw new Error("Aucune URL d'image générée dans la réponse Fal.ai.");
   }
 
