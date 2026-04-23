@@ -1,8 +1,9 @@
 {
-  "buildCommand": "echo 'Build complete'",
-  "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/ai-smart-router/functions/health" },
-    { "source": "/api/(.*)", "destination": "/ai-smart-router/functions/$1" }
+    { "source": "/", "destination": "/api/landing" },
+    { "source": "/docs", "destination": "/api/index" },
+    { "source": "/swagger", "destination": "/api/swagger" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
 }
