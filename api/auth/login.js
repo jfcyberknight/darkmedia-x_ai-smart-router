@@ -99,11 +99,17 @@ module.exports = async (req, res) => {
         .g_id_signin {
             display: flex;
             justify-content: center;
-            filter: grayscale(1) invert(1) brightness(1.2); /* Pour matcher le look sombre */
-            transition: filter 0.3s;
+            padding: 4px;
+            border-radius: 50px;
+            background: rgba(196, 30, 58, 0.05);
+            border: 1px solid var(--border);
+            box-shadow: 0 0 15px rgba(196, 30, 58, 0.1);
+            transition: all 0.3s ease;
         }
         .g_id_signin:hover {
-            filter: none;
+            border-color: var(--red);
+            box-shadow: 0 0 25px var(--red-glow);
+            transform: scale(1.02);
         }
 
         /* Particles */
