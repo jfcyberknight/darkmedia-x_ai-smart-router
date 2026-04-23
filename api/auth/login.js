@@ -20,46 +20,36 @@ module.exports = async (req, res) => {
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
-            --red: #c41e3a;
-            --red-glow: rgba(196, 30, 58, 0.6);
+            --red: #ff0000;
+            --red-glow: rgba(255, 0, 0, 0.5);
             --bg: #050505;
-            --panel: rgba(255, 255, 255, 0.03);
-            --border: rgba(196, 30, 58, 0.3);
-            --text: #e8d5c4;
-            --text-dim: #9daab8;
+            --panel: rgba(10, 5, 5, 0.7);
+            --border: rgba(255, 0, 0, 0.2);
+            --text: #ffffff;
+            --text-dim: #888;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Rajdhani', sans-serif;
             overflow: hidden;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        /* Ambient Background */
-        body::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: 
-                radial-gradient(circle at 20% 20%, rgba(196, 30, 58, 0.1) 0%, transparent 40%),
-                radial-gradient(circle at 80% 80%, rgba(112, 0, 255, 0.05) 0%, transparent 40%);
-            z-index: -1;
+            background-image: radial-gradient(circle at 50% 50%, rgba(139, 0, 0, 0.15) 0%, transparent 60%);
         }
 
         .login-card {
             background: var(--panel);
             backdrop-filter: blur(25px);
             padding: 3.5rem;
-            border-radius: 4px;
+            border-radius: 2px;
             border: 1px solid var(--border);
             text-align: center;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 20px rgba(196, 30, 58, 0.1);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
             max-width: 450px;
             width: 90%;
             z-index: 10;
@@ -68,48 +58,38 @@ module.exports = async (req, res) => {
 
         .brand-name {
             font-family: 'Cinzel', serif;
-            font-size: 1.8rem;
-            letter-spacing: 0.15em;
-            background: linear-gradient(135deg, #fff 0%, var(--red) 50%, #8b0000 100%);
+            font-size: 2.2rem;
+            letter-spacing: 0.2em;
+            background: linear-gradient(180deg, #fff 0%, var(--red) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-            filter: drop-shadow(0 0 10px var(--red-glow));
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 15px var(--red-glow));
+            text-transform: uppercase;
         }
 
         h1 {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             text-transform: uppercase;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.4em;
             color: var(--text);
-            margin-bottom: 2rem;
-            margin-top: 1rem;
-        }
-
-        p {
-            font-family: 'Rajdhani', sans-serif;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
             margin-bottom: 2.5rem;
+            font-weight: 300;
         }
 
         .g_id_signin {
             display: flex;
             justify-content: center;
-            padding: 4px;
-            border-radius: 50px;
-            background: rgba(196, 30, 58, 0.05);
+            padding: 10px;
+            border-radius: 2px;
+            background: rgba(255, 0, 0, 0.05);
             border: 1px solid var(--border);
-            box-shadow: 0 0 15px rgba(196, 30, 58, 0.1);
             transition: all 0.3s ease;
         }
         .g_id_signin:hover {
             border-color: var(--red);
             box-shadow: 0 0 25px var(--red-glow);
-            transform: scale(1.02);
+            background: rgba(255, 0, 0, 0.1);
         }
 
         /* Particles */
