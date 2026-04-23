@@ -138,6 +138,23 @@ module.exports = async (req, res) => {
             to { opacity: 1; transform: scale(1); }
         }
     </style>
+    <script>
+        function handleCredentialResponse(response) {
+            // Envoyer le credential (idToken) au callback via un formulaire POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/auth/callback';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'credential';
+            input.value = response.credential;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
 </head>
 <body>
     <div class="particles" id="particles"></div>
@@ -150,8 +167,7 @@ module.exports = async (req, res) => {
         <div id="g_id_onload"
              data-client_id="${GOOGLE_CLIENT_ID}"
              data-context="signin"
-             data-ux_mode="redirect"
-             data-login_uri="${(req.headers['x-forwarded-proto'] || 'http') + '://' + req.headers.host}/api/auth/callback"
+             data-callback="handleCredentialResponse"
              data-auto_prompt="false">
         </div>
 
