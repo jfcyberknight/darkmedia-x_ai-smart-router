@@ -1,7 +1,7 @@
-const { routeChat } = require('../lib/router');
-const { checkApiSecret } = require('../lib/auth');
-const { applySecurityHeaders } = require('../lib/security-headers');
-const { sendSuccess, sendError } = require('../lib/api-response');
+const { routeChat } = require("../lib/router");
+const { checkApiSecret, checkClientAuth } = require("../lib/auth");
+const { applySecurityHeaders } = require("../lib/security-headers");
+const { sendSuccess, sendError } = require("../lib/api-response");
 
 const MAX_TEXT_LENGTH = 32 * 1024; // 32 KB
 
@@ -80,54 +80,68 @@ L'utilisateur Jean Dupont a fini son test avec 85% aujourd'hui le 13 mars 2026.
  * Protégé par API_SECRET.
  */
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp");
   applySecurityHeaders(res);
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  if (!checkApiSecret(req, res)) return;
+  // Essayer authentification client/serveur d'abord (nouveau système)
+  const hasClientKey = req.headers["x-client-key"];
+  if (hasClientKey) {
+    if (!checkClientAuth(req, res)) return;
+  } else {
+    // Sinon utiliser l'ancien système
+    if (!checkApiSecret(req, res)) return;
+  }
 
-  if (req.method !== 'POST') {
-    return sendError(res, 'Méthode non autorisée. Utilisez POST.', 405);
+  if (req.method !== "POST") {
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+  }
+
+  const { validateBodySize } = require("../lib/validate-chat");
+  const rawBody = typeof req.body === "string" ? req.body : (req.body && JSON.stringify(req.body)) || "";
+  const sizeCheck = validateBodySize(rawBody);
+  if (!sizeCheck.ok) {
+    return sendError(res, sizeCheck.error, 413);
   }
 
   let body;
   try {
-    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+    body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, 'Body JSON invalide.', 400);
+    return sendError(res, "Body JSON invalide.", 400);
   }
 
-  const text = typeof body.text === 'string' ? body.text.trim() : '';
+  const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) {
     return sendError(res, 'Le champ "text" (string) est requis.', 400);
   }
   if (text.length > MAX_TEXT_LENGTH) {
-    return sendError(res, 'Texte trop long.', 413);
+    return sendError(res, "Texte trop long.", 413);
   }
 
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: `## Texte à traiter\n\n${text}` },
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: `## Texte à traiter\n\n${text}` },
   ];
 
   try {
     const result = await routeChat({ messages });
-    let raw = (result.text || '').trim();
+    let raw = (result.text || "").trim();
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) raw = jsonMatch[1].trim();
     const data = JSON.parse(raw);
-    return sendSuccess(res, data, 'Données extraites');
+    return sendSuccess(res, data, "Données extraites");
   } catch (err) {
     if (err instanceof SyntaxError) {
-      return sendError(res, 'Réponse du modèle non valide (JSON invalide).', 422);
+      return sendError(res, "Réponse du modèle non valide (JSON invalide).", 422);
     }
-    console.error('[api/normalize]', err.message);
-    const status = err.status || (err.message?.includes('échoué') ? 502 : 500);
-    return sendError(res, err.message || 'Erreur lors de l\'extraction.', status);
+    console.error("[api/normalize]", err.message);
+    const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
+    return sendError(res, err.message || "Erreur lors de l'extraction.", status);
   }
 };

@@ -9,74 +9,88 @@
  * Par défaut, toutes les clés du .env (valeur non vide) sont poussées, sauf celles listées dans EXCLUDE.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawn, execSync } = require('child_process');
+const fs = require("fs");
+const path = require("path");
+const { spawn, execSync } = require("child_process");
 
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, "..");
 
 function getCurrentGitBranch() {
   try {
-    return execSync('git rev-parse --abbrev-ref HEAD', {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim() || 'main';
+    return (
+      execSync("git rev-parse --abbrev-ref HEAD", {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim() || "main"
+    );
   } catch {
-    return 'main';
+    return "main";
   }
 }
 
 // Variables à ne pas pousser vers Vercel (usage local uniquement)
-const EXCLUDE = new Set(['NODE_ENV', 'DEBUG', 'VERCEL', 'CI']);
+const EXCLUDE = new Set(["NODE_ENV", "DEBUG", "VERCEL", "CI"]);
 
 // Par défaut : production + development (preview exige un dépôt Git connecté sur Vercel)
-const ENVIRONMENTS = ['production', 'development'];
+const ENVIRONMENTS = ["production", "development"];
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
-    console.error('❌ Fichier introuvable:', filePath);
+    console.error("❌ Fichier introuvable:", filePath);
     process.exit(1);
   }
-  const content = fs.readFileSync(filePath, 'utf8');
+  const content = fs.readFileSync(filePath, "utf8");
   const vars = {};
   for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const eq = trimmed.indexOf('=');
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
     let value = trimmed.slice(eq + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1).replace(/\\n/g, '\n');
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1).replace(/\\n/g, "\n");
     }
     vars[key] = value;
   }
   return vars;
 }
 
-function addToVercel(name, value, environment, gitBranch) {
-  const args = ['env', 'add', name, environment];
-  if (environment === 'preview' && gitBranch) args.push(gitBranch);
-  args.push('--yes', '--force');
+function addToVercel(name, value, environment, gitBranch, options = {}) {
+  const args = ["env", "add", name, environment];
+  if (environment === "preview" && gitBranch) args.push(gitBranch);
+  const token = process.env.VERCEL_TOKEN;
+  const tokenArg = token ? `--token ${token}` : "";
+  if (options.clean) {
+    try {
+      execSync(
+        `echo y | vercel env rm ${name} ${environment} ${environment === "preview" && gitBranch ? gitBranch : ""} ${tokenArg}`,
+        { cwd: ROOT, stdio: "ignore", shell: true }
+      );
+    } catch (e) {
+      // Ignore errors if the variable doesn't exist
+    }
+  }
+  args.push("--force");
+  if (token) args.push("--token", token);
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      'vercel',
-      args,
-      {
-        cwd: ROOT,
-        stdio: ['pipe', 'inherit', 'pipe'],
-        shell: process.platform === 'win32',
-      }
-    );
-    let stderr = '';
-    child.stderr.setEncoding('utf8');
-    child.stderr.on('data', (chunk) => {
+    const child = spawn("vercel", args, {
+      cwd: ROOT,
+      stdio: ["pipe", "inherit", "pipe"],
+      shell: process.platform === "win32",
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => {
       stderr += chunk;
       process.stderr.write(chunk);
     });
-    child.on('error', reject);
-    child.on('close', (code) => {
+    child.on("error", reject);
+    child.on("close", (code) => {
       if (code === 0) return resolve();
       const err = new Error(`exit ${code}`);
       err.stderr = stderr;
@@ -88,59 +102,75 @@ function addToVercel(name, value, environment, gitBranch) {
 
 async function main() {
   const args = process.argv.slice(2);
-  let envFile = path.join(ROOT, '.env');
+  let envFile = path.join(ROOT, ".env");
   let envFilter = ENVIRONMENTS;
+  let clean = false;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--env' && args[i + 1]) {
-      envFilter = args[i + 1].split(',').map((e) => e.trim());
+    if (args[i] === "--env" && args[i + 1]) {
+      envFilter = args[i + 1].split(",").map((e) => e.trim());
       i++;
-    } else if (!args[i].startsWith('--')) {
+    } else if (args[i] === "--clean") {
+      clean = true;
+    } else if (!args[i].startsWith("--")) {
       envFile = path.isAbsolute(args[i]) ? args[i] : path.join(process.cwd(), args[i]);
     }
   }
 
   const vars = parseEnvFile(envFile);
   const toPush = Object.keys(vars).filter(
-    (k) => !EXCLUDE.has(k) && vars[k] != null && String(vars[k]).trim() !== ''
+    (k) => !EXCLUDE.has(k) && vars[k] != null && String(vars[k]).trim() !== ""
   );
   if (toPush.length === 0) {
-    console.log('⚠️ Aucune variable à pousser (fichier vide ou valeurs vides).');
+    console.log("⚠️ Aucune variable à pousser (fichier vide ou valeurs vides).");
     process.exit(0);
   }
 
   const notLinked = /not_linked|isn't linked|isn't linked to a project/i;
   const gitBranch = getCurrentGitBranch();
-  if (envFilter.includes('preview')) {
-    console.log('📤 Envoi vers Vercel:', toPush.join(', '), '| environnements:', envFilter.join(', '), '| branche preview:', gitBranch);
+  if (envFilter.includes("preview")) {
+    console.log(
+      "📤 Envoi vers Vercel:",
+      toPush.join(", "),
+      "| environnements:",
+      envFilter.join(", "),
+      "| branche preview:",
+      gitBranch
+    );
   } else {
-    console.log('📤 Envoi vers Vercel:', toPush.join(', '), '| environnements:', envFilter.join(', '));
+    console.log(
+      "📤 Envoi vers Vercel:",
+      toPush.join(", "),
+      "| environnements:",
+      envFilter.join(", ")
+    );
   }
   for (const name of toPush) {
     const value = vars[name];
     for (const env of envFilter) {
       try {
-        await addToVercel(name, value, env, env === 'preview' ? gitBranch : null);
-        console.log('  ✅', name, '→', env + (env === 'preview' ? ` (${gitBranch})` : ''));
+        await addToVercel(name, value, env, env === "preview" ? gitBranch : null, { clean });
+        console.log("  ✅", name, "→", env + (env === "preview" ? ` (${gitBranch})` : ""));
       } catch (e) {
         if (e.stderr && notLinked.test(e.stderr)) {
-          console.error('\n❌ Le projet n\'est pas lié à Vercel.');
-          console.error('   Exécutez d\'abord : vercel link');
-          console.error('   Puis relancez : npm run env:push\n');
+          console.error("\n❌ Le projet n'est pas lié à Vercel.");
+          console.error("   Exécutez d'abord : vercel link");
+          console.error("   Puis relancez : npm run env:push\n");
           process.exit(1);
         }
-        const skipPreview = env === 'preview' && e.stderr && (
-          /git_branch_required|does not have a connected Git repository/i.test(e.stderr)
-        );
+        const skipPreview =
+          env === "preview" &&
+          e.stderr &&
+          /git_branch_required|does not have a connected Git repository/i.test(e.stderr);
         if (skipPreview) {
-          console.warn('  ⚠️', name, '→ preview ignoré (connexion Git requise sur Vercel)');
+          console.warn("  ⚠️", name, "→ preview ignoré (connexion Git requise sur Vercel)");
         } else {
-          console.error('  ❌', name, env, e.message);
+          console.error("  ❌", name, env, e.message);
         }
       }
     }
   }
-  console.log('✅ Terminé.');
+  console.log("✅ Terminé.");
 }
 
 main().catch((err) => {
