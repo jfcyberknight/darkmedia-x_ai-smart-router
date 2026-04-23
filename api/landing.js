@@ -49,27 +49,29 @@ module.exports = async (req, res) => {
         .hero {
             text-align: center;
             z-index: 10;
-            max-width: 600px;
+            width: 100%;
+            max-width: 900px;
             padding: 2rem;
         }
 
         .brand-logo {
             font-family: 'Cinzel', serif;
-            font-size: 4.5rem;
-            letter-spacing: 0.2em;
+            font-size: clamp(2rem, 10vw, 4.5rem);
+            letter-spacing: 0.15em;
             background: linear-gradient(135deg, #fff 0%, var(--red) 50%, #8b0000 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
             filter: drop-shadow(0 0 20px var(--red-glow));
             animation: fadeInDown 1.5s ease-out;
+            white-space: nowrap;
         }
 
         .tagline {
             font-family: 'Rajdhani', sans-serif;
-            font-size: 1.2rem;
+            font-size: clamp(0.8rem, 3vw, 1.2rem);
             text-transform: uppercase;
-            letter-spacing: 0.5em;
+            letter-spacing: clamp(0.2em, 2vw, 0.5em);
             color: var(--text-dim);
             margin-bottom: 3rem;
             animation: fadeInUp 1.5s ease-out 0.5s both;
@@ -164,7 +166,7 @@ module.exports = async (req, res) => {
     <div class="particles" id="particles"></div>
 
     <main class="hero">
-        <h1 class="brand-logo">DARKMEDIA</h1>
+        <h1 class="brand-logo">DARKMEDIA-X</h1>
         <p class="tagline">Neural Network Gateway</p>
         
         <div class="links-container">
