@@ -17,6 +17,7 @@
     "prepare": "node scripts/install-git-hooks.js",
     "env:push": "node scripts/vercel-env-push.js",
     "env:sync": "node scripts/env-sync.js",
+    "env:sync:force": "node scripts/env-sync.js --force",
     "test": "node --test tests/validate-chat.test.js tests/auth.test.js tests/deployed.test.js",
     "test:deployed": "node --test tests/deployed.test.js",
     "test:providers": "node scripts/test-providers.js",

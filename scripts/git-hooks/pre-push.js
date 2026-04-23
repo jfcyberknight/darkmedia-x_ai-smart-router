@@ -7,7 +7,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const root = path.resolve(__dirname, "../..");
-const r = spawnSync("npm", ["run", "env:sync"], {
+const r = spawnSync("pnpm", ["run", "env:sync"], {
   stdio: "inherit",
   cwd: root,
   shell: process.platform === "win32",

@@ -13,6 +13,7 @@
     "env:push": "node scripts/vercel-env-push.js",
     "env:push:root": "node scripts/vercel-env-push.js .env",
     "env:sync": "node scripts/env-sync.js",
+    "env:sync:force": "node scripts/env-sync.js --force",
     "test": "node --test tests/validate-chat.test.js tests/auth.test.js tests/router.test.js tests/providers.test.js tests/deployed.test.js",
     "test:deployed": "node --test tests/deployed.test.js",
     "test:providers": "node scripts/test-providers.js",

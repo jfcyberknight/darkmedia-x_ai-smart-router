@@ -85,6 +85,9 @@ function runVercelPush() {
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  const forceSync = args.includes("--force");
+
   if (!fs.existsSync(ENV_FILE)) {
     console.error("❌ Fichier .env introuvable.");
     process.exit(1);
@@ -105,20 +108,26 @@ async function main() {
     console.log("📝 .env.example déjà à jour.");
   }
 
-  console.log("\n📤 Pousse vers Vercel...\n");
-  if (!isVercelLinked()) {
-    try {
-      await runVercelLink();
-      console.log("");
-    } catch (err) {
-      console.error("\n❌", err.message);
-      console.error("   Liez le projet avec: vercel link (ou vercel link --scope <team> --yes)");
-      console.error("   Puis relancez: npm run env:sync\n");
-      process.exit(1);
+  if (forceSync) {
+    console.log("\n📤 Pousse vers Vercel (Mode FORCE)...\n");
+    if (!isVercelLinked()) {
+      try {
+        await runVercelLink();
+        console.log("");
+      } catch (err) {
+        console.error("\n❌", err.message);
+        console.error("   Liez le projet avec: vercel link (ou vercel link --scope <team> --yes)");
+        console.error("   Puis relancez: npm run env:sync -- --force\n");
+        process.exit(1);
+      }
     }
+    await runVercelPush();
+    console.log("\n✅ Synchronisation Vercel terminée.");
+  } else {
+    console.log("\nℹ️  Synchro Vercel ignorée (lent). Utilisez 'pnpm run env:sync --force' pour forcer.");
   }
-  await runVercelPush();
-  console.log("\n✅ Synchronisation terminée (Vercel + .env.example).");
+
+  console.log("✅ Opération terminée.\n");
 }
 
 main().catch((err) => {
