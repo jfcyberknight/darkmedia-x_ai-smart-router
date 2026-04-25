@@ -130,6 +130,7 @@
   "paths": {
     "/api/health": {
       "get": {
+        "tags": ["System"],
         "summary": "Health Check",
         "description": "Returns the service status and active providers.",
         "responses": {
@@ -174,6 +175,7 @@
     },
     "/api/chat": {
       "post": {
+        "tags": ["AI Operations"],
         "summary": "Chat Completion",
         "description": "Route a chat request to an AI provider with fallback logic.",
         "security": [
@@ -225,6 +227,7 @@
     },
     "/api/normalize": {
       "post": {
+        "tags": ["AI Operations"],
         "summary": "Text Normalization",
         "description": "Extract structured data from free-text.",
         "security": [
