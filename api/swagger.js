@@ -1,7 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const { getSessionFromRequest } = require("../lib/auth-google");
 
 module.exports = async (req, res) => {
+  // Vérification de l'authentification Session (Google OAuth)
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    return res.redirect("/api/auth/login");
+  }
+
   try {
     const filePath = path.join(process.cwd(), 'openapi.json');
     const spec = JSON.parse(fs.readFileSync(filePath, 'utf8'));
