@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "https://darkmedia-x-ai-smart-router.vercel.app",
+      "url": "https://darkmedia-xapi-ai-smart-router.vercel.app",
       "description": "Production server"
     },
     {
@@ -123,6 +123,56 @@
             "type": "string",
             "maxLength": 32768
           }
+        }
+      },
+      "ImageRequest": {
+        "type": "object",
+        "required": ["prompt"],
+        "properties": {
+          "prompt": { "type": "string", "description": "Text prompt for image generation" },
+          "model": { "type": "string", "description": "Model override (e.g. fal-ai/flux/schnell, openai/dall-e-3)" },
+          "enhance": { "type": "boolean", "description": "Enhance prompt via Groq before generation" }
+        }
+      },
+      "ImageResponse": {
+        "type": "object",
+        "properties": {
+          "imageUrl": { "type": "string", "format": "uri" },
+          "provider": { "type": "string", "enum": ["fal", "openrouter"] },
+          "model": { "type": "string" }
+        }
+      },
+      "TtsRequest": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "maxLength": 1000, "description": "Text to synthesize" },
+          "voice": { "type": "string", "description": "Voice ID (provider-specific)" },
+          "model": { "type": "string", "description": "TTS model override" }
+        }
+      },
+      "TtsResponse": {
+        "type": "object",
+        "properties": {
+          "audio": { "type": "string", "description": "Base64-encoded audio data" },
+          "contentType": { "type": "string", "example": "audio/mp3" }
+        }
+      },
+      "VideoRequest": {
+        "type": "object",
+        "properties": {
+          "prompt": { "type": "string", "description": "Text prompt for video generation" },
+          "image_url": { "type": "string", "format": "uri", "description": "Source image for image-to-video" },
+          "model": { "type": "string", "description": "Model override (default: fal-ai/fast-svd-lcm)" },
+          "enhance": { "type": "boolean", "description": "Enhance prompt via Groq before generation" }
+        }
+      },
+      "VideoResponse": {
+        "type": "object",
+        "properties": {
+          "videoUrl": { "type": "string", "format": "uri" },
+          "provider": { "type": "string", "enum": ["fal", "openrouter"] },
+          "model": { "type": "string" }
         }
       }
     }
@@ -262,6 +312,122 @@
           "401": {
             "description": "Unauthorized"
           }
+        }
+      }
+    },
+    "/api/image": {
+      "post": {
+        "tags": ["Media Generation"],
+        "summary": "Generate Image",
+        "description": "Generate an image from a text prompt using Fal.ai or OpenRouter with automatic fallback.",
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ImageRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Image generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "donnees": { "$ref": "#/components/schemas/ImageResponse" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/tts": {
+      "post": {
+        "tags": ["Media Generation"],
+        "summary": "Text-to-Speech",
+        "description": "Synthesize speech from text using ElevenLabs, Together AI, OpenRouter, or Coqui (in priority order).",
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TtsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Audio generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "donnees": { "$ref": "#/components/schemas/TtsResponse" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "503": { "description": "No TTS provider configured" }
+        }
+      }
+    },
+    "/api/video": {
+      "post": {
+        "tags": ["Media Generation"],
+        "summary": "Generate Video",
+        "description": "Generate a video from text or image using Fal.ai with OpenRouter fallback.",
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VideoRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Video generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Envelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "donnees": { "$ref": "#/components/schemas/VideoResponse" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Unauthorized" },
+          "503": { "description": "No video provider configured" }
         }
       }
     }
