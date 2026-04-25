@@ -54,17 +54,16 @@ module.exports = async (req, res) => {
     return sendError(res, "Body JSON invalide.", 400);
   }
 
-  const { messages, models: modelOverrides } = body;
+  const { messages, model } = body;
   const msgValidation = validateMessages(messages);
   if (!msgValidation.ok) {
     return sendError(res, msgValidation.error, 400);
   }
-  const modelOverridesValid = validateModelOverrides(modelOverrides);
 
   try {
     const result = await routeChat({
       messages: msgValidation.messages,
-      modelOverrides: modelOverridesValid,
+      model,
     });
     return sendSuccess(
       res,

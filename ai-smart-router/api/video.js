@@ -6,7 +6,6 @@ const FAL_KEY = process.env.FAL_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const DEFAULT_FAL_MODEL = "fal-ai/fast-svd-lcm";
-const OPENROUTER_MODEL = "openai/gpt-4o";
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -60,71 +59,37 @@ module.exports = async (req, res) => {
     let result;
     let usedProvider = "";
 
-    if (FAL_KEY) {
-      const modelPath = model || DEFAULT_FAL_MODEL;
-      console.log(`[api/video] Tentative avec Fal.ai (${modelPath})`);
-      const falResponse = await fetch(`https://fal.run/${modelPath}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Key ${FAL_KEY}`,
-        },
-        body: JSON.stringify({
-          ...(finalPrompt && { prompt: finalPrompt }),
-          ...(image_url && { image_url }),
-        }),
-      });
-
-      if (falResponse.ok) {
-        const data = await falResponse.json();
-        const videoUrl = data.video?.url || data.videos?.[0]?.url || data.url;
-        if (!videoUrl) {
-          console.error("[api/video] Réponse Fal.ai brute:", JSON.stringify(data));
-          throw new Error("Aucune URL vidéo générée dans la réponse Fal.ai.");
-        }
-        result = { videoUrl, provider: "fal", model: modelPath };
-        usedProvider = "fal";
-      } else {
-        const err = await falResponse.text();
-        console.warn("[api/video] Fal.ai error:", err);
-        throw new Error(`Fal.ai: ${err}`);
-      }
-    } else if (OPENROUTER_API_KEY) {
-      console.log("[api/video] Tentative avec OpenRouter...");
-      const orResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://darkmedia-x.studio",
-          "X-Title": "DarkMedia-X Studio",
-        },
-        body: JSON.stringify({
-          model: OPENROUTER_MODEL,
-          messages: [
-            { role: "user", content: `Generate a video with this prompt: ${finalPrompt}. If you can't generate videos, explain how to create one.` },
-          ],
-        }),
-      });
-
-      if (orResponse.ok) {
-        const data = await orResponse.json();
-        const content = data.choices?.[0]?.message?.content || "";
-        const urlMatch = content.match(/https?:\/\/[^\s)]+/);
-        result = {
-          videoUrl: urlMatch ? urlMatch[0] : null,
-          instructions: content,
-          provider: "openrouter",
-          model: OPENROUTER_MODEL,
-        };
-        usedProvider = "openrouter";
-      } else {
-        const err = await orResponse.text();
-        console.warn("[api/video] OpenRouter error:", err);
-        throw new Error(`OpenRouter: ${err}`);
-      }
-    } else {
+    if (!FAL_KEY) {
       return sendError(res, "Aucune API vidéo configurée. Définissez FAL_KEY.", 503);
+    }
+
+    const modelPath = model || DEFAULT_FAL_MODEL;
+    console.log(`[api/video] Tentative avec Fal.ai (${modelPath})`);
+    const falResponse = await fetch(`https://fal.run/${modelPath}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${FAL_KEY}`,
+      },
+      body: JSON.stringify({
+        ...(finalPrompt && { prompt: finalPrompt }),
+        ...(image_url && { image_url }),
+      }),
+    });
+
+    if (falResponse.ok) {
+      const data = await falResponse.json();
+      const videoUrl = data.video?.url || data.videos?.[0]?.url || data.url;
+      if (!videoUrl) {
+        console.error("[api/video] Réponse Fal.ai brute:", JSON.stringify(data));
+        throw new Error("Aucune URL vidéo générée dans la réponse Fal.ai.");
+      }
+      result = { videoUrl, provider: "fal", model: modelPath };
+      usedProvider = "fal";
+    } else {
+      const err = await falResponse.text();
+      console.warn("[api/video] Fal.ai error:", err);
+      throw new Error(`Fal.ai: ${err}`);
     }
 
     return sendSuccess(res, result, `Vidéo générée avec succès (${usedProvider})`);

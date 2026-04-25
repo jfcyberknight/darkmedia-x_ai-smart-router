@@ -1,44 +1,49 @@
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
+const { routeChat, fetchFreeOpenRouterModels } = require("../lib/router");
 
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-001";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-async function generateWithGemini(apiKey, prompt) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_IMAGE_MODEL}:generateContent`, {
+/** Mots-clés pour identifier les modèles d'image gratuits sur OpenRouter. */
+const IMAGE_KEYWORDS = ["dall-e", "flux", "sdxl", "stable-diffusion", "image"];
+
+function isImageModel(modelId) {
+  const lower = modelId.toLowerCase();
+  return IMAGE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+async function generateImageWithModel(apiKey, model, prompt) {
+  const response = await fetch(OPENROUTER_IMAGE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-goog-api-key": apiKey,
+      Authorization: `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://darkmedia-x.studio",
+      "X-Title": "DarkMedia-X Studio",
     },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ["Text", "Image"] },
+      model,
+      messages: [{ role: "user", content: prompt }],
     }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini API: ${res.status} ${err}`);
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`${response.status} ${err}`);
   }
 
-  const data = await res.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  const urlMatch = content.match(/https?:\/\/[^\s)]+/);
+  const imageUrl = urlMatch ? urlMatch[0] : content || null;
 
-  const inlineData = parts.find((p) => p.inlineData);
-  if (inlineData?.inlineData?.data) {
-    const mimeType = inlineData.inlineData.mimeType || "image/png";
-    const base64 = inlineData.inlineData.data;
-    return { imageUrl: `data:${mimeType};base64,${base64}`, provider: "gemini", model: GEMINI_IMAGE_MODEL };
+  if (!imageUrl) {
+    throw new Error("Aucune image générée dans la réponse.");
   }
 
-  const textPart = parts.find((p) => p.text);
-  if (textPart) {
-    const urlMatch = textPart.text.match(/https?:\/\/[^\s)]+/);
-    if (urlMatch) return { imageUrl: urlMatch[0], provider: "gemini", model: GEMINI_IMAGE_MODEL };
-  }
-
-  throw new Error("Gemini n'a pas généré d'image dans sa réponse.");
+  return { imageUrl, provider: "openrouter", model };
 }
 
 module.exports = async (req, res) => {
@@ -72,80 +77,53 @@ module.exports = async (req, res) => {
     return sendError(res, "Le champ 'prompt' est requis.", 400);
   }
 
+  if (!OPENROUTER_API_KEY) {
+    return sendError(res, "OPENROUTER_API_KEY non configuré.", 503);
+  }
+
   let finalPrompt = prompt;
+
+  // Enhancement via OpenRouter chat (si activé)
   if (enhance) {
     try {
-      const groqProvider = require("../lib/providers/groq");
-      const groqKey = process.env.GROQ_API_KEY;
-      if (groqKey) {
-        const enhanceMsg = [{ role: "user", content: `Enrichis ce prompt pour une image d'horreur DarkMedia-X (style Junji Ito, sombre, détaillé) : "${prompt}". Réponds uniquement avec le prompt enrichi en anglais.` }];
-        const enhanced = await groqProvider.generate({ apiKey: groqKey, messages: enhanceMsg });
-        finalPrompt = enhanced.text || prompt;
-        console.log(`[Images] Prompt enrichi par GROQ: ${finalPrompt}`);
-      }
+      const enhanceResult = await routeChat({
+        messages: [
+          { role: "user", content: `Enrichis ce prompt pour une image d'horreur DarkMedia-X (style Junji Ito, sombre, détaillé) : "${prompt}". Réponds uniquement avec le prompt enrichi en anglais.` }
+        ],
+      });
+      finalPrompt = enhanceResult.text || prompt;
+      console.log(`[Images] Prompt enrichi: ${finalPrompt}`);
     } catch (e) {
-      console.warn("[Images] Échec de l'enrichissement GROQ, utilisation du prompt original.");
+      console.warn("[Images] Échec de l'enrichissement, utilisation du prompt original.");
     }
   }
 
   try {
-    const falKey = process.env.FAL_KEY;
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const payantModel = model || "openai/dall-e-3";
 
-    let result;
-    let usedProvider = "";
-    const providers = [];
+    // Récupérer les modèles gratuits et filtrer ceux d'image
+    const allFreeModels = await fetchFreeOpenRouterModels();
+    const freeImageModels = allFreeModels.filter(isImageModel);
 
-    if (falKey) providers.push("fal");
-    if (openrouterKey) providers.push("openrouter");
-    if (geminiKey) providers.push("gemini");
+    // Construire l'ordre : gratuits image > modèle payant
+    const modelsToTry = [...freeImageModels];
+    if (!modelsToTry.includes(payantModel)) {
+      modelsToTry.push(payantModel);
+    }
 
-    for (const provider of providers) {
+    let lastErr = null;
+    for (const m of modelsToTry) {
       try {
-        if (provider === "fal") {
-          console.log("[api/image] Tentative avec Fal.ai");
-          const falProvider = require("../lib/providers/fal");
-          result = await falProvider.generate({
-            apiKey: falKey,
-            model: (model && model.includes("fal-ai")) ? model : require("../lib/providers/fal").DEFAULT_MODEL,
-            prompt: finalPrompt,
-          });
-          usedProvider = "fal";
-        } else if (provider === "openrouter") {
-          console.log("[api/image] Tentative avec OpenRouter");
-          const openrouterProvider = require("../lib/providers/images");
-          result = await openrouterProvider.generate({
-            apiKey: openrouterKey,
-            model: model || "openai/dall-e-3",
-            prompt: finalPrompt,
-          });
-          usedProvider = "openrouter";
-        } else if (provider === "gemini") {
-          console.log("[api/image] Tentative avec Google Gemini");
-          result = await generateWithGemini(geminiKey, finalPrompt);
-          usedProvider = "gemini";
-        }
-        if (result) break;
+        console.log(`[api/image] Tentative avec ${m}...`);
+        const result = await generateImageWithModel(OPENROUTER_API_KEY, m, finalPrompt);
+        return sendSuccess(res, result, `Image générée avec succès (${m})`);
       } catch (err) {
-        console.warn(`[api/image] Échec ${provider}:`, err.message);
-        if (provider === providers[providers.length - 1]) throw err;
+        lastErr = err;
+        console.warn(`[api/image] Échec ${m}:`, err.message);
       }
     }
 
-    if (!result) {
-      throw new Error("Aucun fournisseur d'image configuré (FAL_KEY, OPENROUTER_API_KEY ou GEMINI_API_KEY manquant)");
-    }
-
-    return sendSuccess(
-      res,
-      {
-        imageUrl: result.imageUrl,
-        provider: result.provider,
-        model: result.model,
-      },
-      `Image générée avec succès (${usedProvider})`
-    );
+    throw lastErr || new Error("Tous les modèles d'image ont échoué.");
   } catch (err) {
     console.error("[api/image]", err.message);
     return sendError(res, err.message || "Erreur lors de la génération d'image.", 500);

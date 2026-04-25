@@ -90,9 +90,27 @@
               "$ref": "#/components/schemas/ChatMessage"
             }
           },
+          "model": {
+            "type": "string",
+            "description": "Model override. Default: meta-llama/llama-3.1-70b-instruct. If rate-limited, falls back automatically to free models."
+          }
+        }
+      },
+          "provider": {
+            "type": "string",
+            "description": "Explicit provider choice. If omitted, OpenRouter is used by default, then fallback to other available providers.",
+            "enum": [
+              "openrouter",
+              "gemini",
+              "groq",
+              "nvapi",
+              "deepseek",
+              "mistral"
+            ]
+          },
           "models": {
             "type": "object",
-            "description": "Override models per provider",
+            "description": "Override models per provider. Defaults: openrouter=meta-llama/llama-3.1-70b-instruct, gemini=gemini-flash-latest, groq=llama-3.3-70b-versatile, nvapi=meta/llama-3.1-8b-instruct, deepseek=deepseek-chat, mistral=mistral-small-latest",
             "additionalProperties": {
               "type": "string"
             }
@@ -227,7 +245,7 @@
       "post": {
         "tags": ["AI Operations"],
         "summary": "Chat Completion",
-        "description": "Route a chat request to an AI provider with fallback logic.",
+        "description": "Route a chat request to an AI provider with fallback logic. OpenRouter is the default provider. If a model reaches its limit (429/quota), cheaper fallback models are tried automatically before switching provider.",
         "security": [
           {
             "BearerAuth": []

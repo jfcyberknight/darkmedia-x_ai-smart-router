@@ -1,41 +1,49 @@
 # Agent Memory — darkmedia-x_ai-smart-router
 
 ## Quick project context
-- Vercel-hosted API that routes AI chat requests across multiple providers (Gemini, Groq, NVAPI, DeepSeek, OpenRouter, Mistral) with **randomised order + automatic fallback** on 429/500/503 or quota errors.
-- Two parallel codebases: root (scripts/config) and `ai-smart-router/` (actual serverless app). Tests target the router package.
+- Vercel-hosted API that routes AI chat requests through **OpenRouter only** (simplified). If the primary model rate-limits (429/quota), it automatically falls back to free models fetched dynamically from OpenRouter.
+- Two parallel codebases: root (workspace config, RAG scripts, shared tooling) and `ai-smart-router/` (actual deployable serverless app). Tests and providers live in the router package.
 
 ## Critical dev commands (non‑obvious)
-- `npm run env:sync` — sync `.env` → `.env.example` + push all vars to Vercel (dev + production). Pre‑push hook runs this automatically.
-- `npm run test:providers` — tests only provider keys + modules (no server). Equivalent: `npm test`.
-- `npm run test:api` — starts dev server (`vercel dev`) then runs HTTP test against `/api/chat`.
-- `npm run test:api:prod` — tests deployed prod endpoint (default: `ai-smart-router.vercel.app`).
+- `pnpm test` from **root fails** — the root `package.json` references test files that don't exist at root (`tests/router.test.js`, `tests/providers.test.js`). The working tests are in `ai-smart-router/tests/`.
+  - Run tests from `ai-smart-router/`: `cd ai-smart-router && pnpm test` (validate-chat, auth, deployed).
+  - `pnpm run test:providers` — tests provider keys + modules (no server). Safe to run from `ai-smart-router/`.
+  - `pnpm run test:api` — starts dev server (`vercel dev`) then runs HTTP test against `/api/chat`.
+  - `pnpm run test:api:prod` — tests deployed prod endpoint (default: `ai-smart-router.vercel.app`).
+- `npm run env:sync` / `pnpm run env:sync` — sync `.env` → `.env.example` + push all vars to Vercel (dev + production). Pre‑push hook runs this automatically.
 - `python scripts/generate-api-secret.py` — generate a secure `API_SECRET`.
-- `npm run rag:index` / `npm run rag:push` — RAG index/push workflows.
+- `npm run rag:index` / `npm run rag:push` — RAG index/push workflows (Python scripts at root).
 
 ## Environment & deployment essentials
 - `API_SECRET` is **required**; without it every request returns 401.
-- At least one provider key (e.g. `GEMINI_API_KEY` or `GROQ_API_KEY`) must be set for the router to have any usable providers.
+- `OPENROUTER_API_KEY` must be set for the chat router to function.
 - `.env` variables are **not** automatically synced to Vercel — run `npm run env:sync` or use `npm run env:push`.
 - Pre‑push git hook runs `env:sync`; bypass with `git push --no-verify`.
-- Vercel rewrites defined in `vercel.json` route `/` → `/api/landing` and `/api/(.*)` → `/api/$1`.
+- Pre‑commit hook runs `pnpm test` from root, which currently fails because root test files are missing. Use `git commit --no-verify` to skip if needed.
+- Vercel rewrites differ between root (`/` → `/api/landing`) and `ai-smart-router/` (`/` → `/api/health`). The deployed app uses `ai-smart-router/vercel.json`.
 
 ## Architecture & routing details
-- Router lives in `ai-smart-router/lib/router.js`. Providers are shuffled (Fisher‑Yates) per request; fallback is sequential.
-- Provider modules live in `ai-smart-router/lib/providers/` (gemini, groq, nvapi, deepseek, openrouter, mistral, etc.).
-- Ollama provider is special: it works if either `OLLAMA_API_KEY` is set **or** `OLLAMA_HOST` is defined.
-- Adding a new provider: create `lib/providers/<id>.js`, export `generate({ apiKey, model, messages })`, add to `PROVIDERS` array in `lib/router.js`, and document its env key in `.env.example`.
+- Router lives in `ai-smart-router/lib/router.js`. **OpenRouter is the only provider** used for chat, image, and TTS. For every request, **free models are tried first**, then fallback to the paid default model if all free ones fail (429/quota/500/503).
+- Provider modules live in `ai-smart-router/lib/providers/` (openrouter for chat/image/tts; fal is still used only by the video route since OpenRouter has no native video models).
+- **OpenRouter free models**: the router fetches the live list of free models from `https://openrouter.ai/api/v1/models` every hour (cached). Each route filters this list by relevant keywords (e.g. image routes look for "dall-e", "flux", "sdxl"; TTS routes look for "tts", "speech", "elevenlabs").
+- Two auth systems coexist:
+  1. Legacy: `Authorization: Bearer <API_SECRET>` or `X-API-Key: <API_SECRET>`.
+  2. Client HMAC: `X-Client-Key`, `X-Signature`, `X-Timestamp` (env vars `CLIENT_KEY_AI_SMART_ROUTER` / `SERVER_SECRET_AI_SMART_ROUTER`).
 
 ## Testing quirks
-- Tests are Node `--test` spec files in `ai-smart-router/tests/` (validate-chat, auth, router, providers, deployed).
-- `npm run test` only runs a subset (`validate-chat`, `auth`, `router`). Use `npm run test:providers` for full provider coverage.
-- `test:api`/`test:api:prod` require the server to be reachable — they start the dev server or call the deployed URL.
+- Tests are Node `--test` spec files in `ai-smart-router/tests/` (validate-chat, auth, deployed).
+- `pnpm test` from `ai-smart-router/` only runs a subset (`validate-chat`, `auth`, `deployed`). Use `pnpm run test:providers` for full provider coverage.
+- `test:api` / `test:api:prod` require the server to be reachable — they start the dev server or call the deployed URL.
+- `deployed.test.js` is skipped unless `TEST_DEPLOYED=true` is set.
 
 ## Repository boundaries
-- Root manifests (package.json, vercel.json, scripts) control tooling and env distribution.
-- `ai-smart-router/` is the deployable Vercel app; everything inside that folder is the actual service.
+- Root manifests (`package.json`, `vercel.json`, scripts) control tooling and env distribution. Root `package.json` declares `workspaces: ["ai-smart-router"]` but there is no `pnpm-workspace.yaml`, so pnpm warns and treats it as a plain project.
+- `ai-smart-router/` is the deployable Vercel app; everything inside that folder is the actual service. It has its own `package.json`, `vercel.json`, and duplicated scripts.
+- Both `package.json` versions should stay in sync (currently `2.0.26`).
 - Secrets/keys never committed — always set via Vercel dashboard or `env:sync` with a local `.env`.
 
 ## Important conventions
 - Keep a Changelog (`CHANGELOG.md`) — required by project standards.
-- Semantic versioning in `package.json` → `version`.
-- README is considered the source of truth; keep it aligned with actual commands and behaviour.
+- Semantic versioning in both `package.json` files → `version`.
+- READMEs exist at both root and `ai-smart-router/`; keep them aligned with actual commands and behaviour.
+- GitHub Actions workflow (`.github/workflows/npm-publish.yml`) publishes the `ai-smart-router` package to GitHub Packages (`npm.pkg.github.com`, scope `@jfcyberknight`) on every push to `main` or `dev`.
