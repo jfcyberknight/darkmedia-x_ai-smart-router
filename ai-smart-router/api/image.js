@@ -2,10 +2,10 @@ const { checkApiSecret, checkClientAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 
-const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp";
+const GEMINI_IMAGE_MODEL = "gemini-2.0-flash-001";
 
 async function generateWithGemini(apiKey, prompt) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_IMAGE_MODEL}:generateContent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
