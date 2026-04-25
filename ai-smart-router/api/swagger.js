@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getSessionFromRequest } = require("../../lib/auth-google");
+const { getSessionFromRequest } = require("../lib/auth-google");
 
 module.exports = async (req, res) => {
   const session = getSessionFromRequest(req);
