@@ -106,27 +106,49 @@ async function tryGenerateWithFallbacks({ apiKey, messages, models }) {
  * (récupérés dynamiquement depuis l'API OpenRouter).
  */
 async function routeChat({ messages, model = null }) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY non configuré.");
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const replicateKey = process.env.REPLICATE_API_KEY;
+
+  if (!openrouterKey && !replicateKey) {
+    throw new Error("Aucune clé API configurée (OPENROUTER_API_KEY ou REPLICATE_API_KEY).");
   }
 
   const freeModels = await fetchFreeOpenRouterModels();
   const primaryModel = model || openrouter.DEFAULT_MODEL;
 
-  // Construire la liste des modèles à essayer : gratuits > principal payant
-  const modelsToTry = [];
-  for (const freeModel of freeModels) {
-    if (freeModel !== primaryModel && !modelsToTry.includes(freeModel)) {
-      modelsToTry.push(freeModel);
+  // 1. Essayer OpenRouter : gratuits > payant
+  if (openrouterKey) {
+    const modelsToTry = [];
+    for (const freeModel of freeModels) {
+      if (freeModel !== primaryModel && !modelsToTry.includes(freeModel)) {
+        modelsToTry.push(freeModel);
+      }
+    }
+    if (!modelsToTry.includes(primaryModel)) {
+      modelsToTry.push(primaryModel);
+    }
+
+    try {
+      return await tryGenerateWithFallbacks({ apiKey: openrouterKey, messages, models: modelsToTry });
+    } catch (err) {
+      console.warn(`[router] OpenRouter échoué: ${err.message}`);
+      if (!isRetryableError(err)) throw err;
     }
   }
-  // Ajouter le modèle payant en dernier recours
-  if (!modelsToTry.includes(primaryModel)) {
-    modelsToTry.push(primaryModel);
+
+  // 2. Fallback sur Replicate (chat)
+  if (replicateKey) {
+    try {
+      console.log("[router] Fallback sur Replicate...");
+      const replicate = require("./providers/replicate");
+      return await replicate.generateChat({ apiKey: replicateKey, messages });
+    } catch (err) {
+      console.warn(`[router] Replicate échoué: ${err.message}`);
+      throw err;
+    }
   }
 
-  return await tryGenerateWithFallbacks({ apiKey, messages, models: modelsToTry });
+  throw new Error("Tous les providers chat ont échoué.");
 }
 
 module.exports = { routeChat, PROVIDERS, fetchFreeOpenRouterModels };

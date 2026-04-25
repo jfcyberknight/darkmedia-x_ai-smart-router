@@ -16,16 +16,18 @@
 
 ## Environment & deployment essentials
 - `API_SECRET` is **required**; without it every request returns 401.
-- `OPENROUTER_API_KEY` must be set for the chat router to function.
+- `OPENROUTER_API_KEY` must be set for chat, image fallback, TTS fallback, and normalize.
+- `REPLICATE_API_KEY` must be set for image, video, and TTS (uses "Try for Free" free models first).
 - `.env` variables are **not** automatically synced to Vercel — run `npm run env:sync` or use `npm run env:push`.
 - Pre‑push git hook runs `env:sync`; bypass with `git push --no-verify`.
 - Pre‑commit hook runs `pnpm test` from root, which currently fails because root test files are missing. Use `git commit --no-verify` to skip if needed.
 - Vercel rewrites differ between root (`/` → `/api/landing`) and `ai-smart-router/` (`/` → `/api/health`). The deployed app uses `ai-smart-router/vercel.json`.
 
 ## Architecture & routing details
-- Router lives in `ai-smart-router/lib/router.js`. **OpenRouter is the only provider** used for chat, image, and TTS. For every request, **free models are tried first**, then fallback to the paid default model if all free ones fail (429/quota/500/503).
-- Provider modules live in `ai-smart-router/lib/providers/` (openrouter for chat/image/tts; fal is still used only by the video route since OpenRouter has no native video models).
-- **OpenRouter free models**: the router fetches the live list of free models from `https://openrouter.ai/api/v1/models` every hour (cached). Each route filters this list by relevant keywords (e.g. image routes look for "dall-e", "flux", "sdxl"; TTS routes look for "tts", "speech", "elevenlabs").
+- Router lives in `ai-smart-router/lib/router.js`. **OpenRouter is the primary provider** for chat. **Replicate is the primary provider** for image, video, and TTS (using "Try for Free" free models). For every request, **free models are tried first**, then fallback to paid models, then switch provider.
+- Provider modules live in `ai-smart-router/lib/providers/` (openrouter for chat; replicate for image/video/tts; fal is fallback for video only).
+- **OpenRouter free models**: fetched dynamically from `https://openrouter.ai/api/v1/models` every hour (cached).
+- **Replicate free models**: static list of "Try for Free" models (google/imagen-4, black-forest-labs/flux-dev, minimax/video-01, resemble-ai/chatterbox, etc.).
 - Two auth systems coexist:
   1. Legacy: `Authorization: Bearer <API_SECRET>` or `X-API-Key: <API_SECRET>`.
   2. Client HMAC: `X-Client-Key`, `X-Signature`, `X-Timestamp` (env vars `CLIENT_KEY_AI_SMART_ROUTER` / `SERVER_SECRET_AI_SMART_ROUTER`).

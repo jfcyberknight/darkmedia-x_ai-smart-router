@@ -3,6 +3,7 @@ const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 const { fetchFreeOpenRouterModels } = require("../lib/router");
 
+const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/tts";
 
@@ -14,7 +15,7 @@ function isTtsModel(modelId) {
   return TTS_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-async function generateTtsWithModel(apiKey, model, text, voice) {
+async function generateWithOpenRouter(apiKey, model, text, voice) {
   const response = await fetch(OPENROUTER_TTS_URL, {
     method: "POST",
     headers: {
@@ -78,42 +79,60 @@ module.exports = async (req, res) => {
     return sendError(res, "Texte trop long (max 1000 caractères).", 400);
   }
 
-  if (!OPENROUTER_API_KEY) {
-    return sendError(res, "OPENROUTER_API_KEY non configuré.", 503);
+  let lastErr = null;
+
+  // 1. Essayer Replicate d'abord (modèles gratuits en priorité)
+  if (REPLICATE_API_KEY) {
+    try {
+      const replicate = require("../lib/providers/replicate");
+      console.log(`[api/tts] Tentative Replicate (gratuits d'abord)...`);
+      const result = await replicate.generateTts({
+        apiKey: REPLICATE_API_KEY,
+        model,
+        text,
+        voice,
+      });
+      return sendSuccess(
+        res,
+        { audio: result.audio, contentType: result.contentType },
+        `Audio généré avec succès (replicate - ${result.model})`
+      );
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[api/tts] Échec Replicate:`, err.message);
+    }
   }
 
-  try {
-    const payantModel = model || "elevenlabs/eleven-turbo-v2";
+  // 2. Fallback sur OpenRouter
+  if (OPENROUTER_API_KEY) {
+    try {
+      const payantModel = model || "elevenlabs/eleven-turbo-v2";
+      const allFreeModels = await fetchFreeOpenRouterModels();
+      const freeTtsModels = allFreeModels.filter(isTtsModel);
+      const modelsToTry = [...freeTtsModels];
+      if (!modelsToTry.includes(payantModel)) modelsToTry.push(payantModel);
 
-    // Récupérer les modèles gratuits et filtrer ceux TTS
-    const allFreeModels = await fetchFreeOpenRouterModels();
-    const freeTtsModels = allFreeModels.filter(isTtsModel);
-
-    // Construire l'ordre : gratuits TTS > modèle payant
-    const modelsToTry = [...freeTtsModels];
-    if (!modelsToTry.includes(payantModel)) {
-      modelsToTry.push(payantModel);
-    }
-
-    let lastErr = null;
-    for (const m of modelsToTry) {
-      try {
-        console.log(`[api/tts] Tentative avec ${m}...`);
-        const result = await generateTtsWithModel(OPENROUTER_API_KEY, m, text, voice);
-        return sendSuccess(
-          res,
-          { audio: result.audio, contentType: result.contentType },
-          `Audio généré avec succès (${m})`
-        );
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[api/tts] Échec ${m}:`, err.message);
+      for (const m of modelsToTry) {
+        try {
+          console.log(`[api/tts] Tentative OpenRouter (${m})...`);
+          const result = await generateWithOpenRouter(OPENROUTER_API_KEY, m, text, voice);
+          return sendSuccess(
+            res,
+            { audio: result.audio, contentType: result.contentType },
+            `Audio généré avec succès (${m})`
+          );
+        } catch (err2) {
+          console.warn(`[api/tts] Échec OpenRouter ${m}:`, err2.message);
+        }
       }
+    } catch (err) {
+      lastErr = err;
     }
-
-    throw lastErr || new Error("Tous les modèles TTS ont échoué.");
-  } catch (err) {
-    console.error("[api/tts]", err.message);
-    return sendError(res, err.message || "Erreur TTS.", 500);
   }
+
+  return sendError(
+    res,
+    lastErr?.message || "Aucun provider TTS configuré (REPLICATE_API_KEY ou OPENROUTER_API_KEY manquant)",
+    503
+  );
 };

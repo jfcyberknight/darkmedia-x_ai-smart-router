@@ -38,12 +38,22 @@ X-Timestamp: <unix-timestamp>
 
 ## Logique de fallback (toutes les routes)
 
-**OpenRouter est le seul provider utilisé.** Pour chaque requête :
+**Stratégie : modèles gratuits d'abord, puis fallback payant.**
 
-1. **Essaye d'abord les modèles gratuits** disponibles sur OpenRouter (récupérés dynamiquement)
+Pour chaque requête :
+
+1. **Essaye d'abord les modèles gratuits** (OpenRouter ou Replicate "Try for Free")
 2. Si tous les gratuits échouent (429, quota, 500, 503), **fallback sur le modèle payant par défaut**
+3. En dernier recours, switch de provider (OpenRouter ↔ Replicate)
 
-La liste des modèles gratuits est mise en cache pendant 1 heure.
+| Route | Ordre d'essai |
+|-------|--------------|
+| `/api/chat` | OpenRouter gratuits → OpenRouter payant → **Replicate** |
+| `/api/image` | **Replicate gratuits** (Imagen-4, FLUX, Ideogram) → Replicate payant → OpenRouter |
+| `/api/video` | **Replicate gratuits** (MiniMax, Luma) → Replicate payant → Fal.ai |
+| `/api/tts` | **Replicate gratuit** (Chatterbox) → Replicate payant → OpenRouter |
+
+La liste des modèles gratuits OpenRouter est mise en cache pendant 1 heure.
 
 ---
 
@@ -96,7 +106,7 @@ Authorization: Bearer <API_SECRET>
 
 **POST** `/api/image`
 
-Génère une image à partir d'un prompt texte. Priorité : modèles image gratuits OpenRouter (flux, dall-e:free, etc.) → `openai/dall-e-3` (payant).
+Génère une image à partir d'un prompt texte. Priorité : **Replicate gratuits** (google/imagen-4, black-forest-labs/flux-dev, ideogram-ai/ideogram-v3-turbo) → Replicate payant → OpenRouter.
 
 #### Headers
 ```
@@ -139,7 +149,7 @@ Authorization: Bearer <API_SECRET>
 
 **POST** `/api/tts`
 
-Synthétise du texte en audio. Priorité : modèles TTS gratuits OpenRouter → `elevenlabs/eleven-turbo-v2` (payant).
+Synthétise du texte en audio. Priorité : **Replicate gratuit** (resemble-ai/chatterbox) → Replicate payant → OpenRouter.
 
 #### Headers
 ```
@@ -181,7 +191,7 @@ Authorization: Bearer <API_SECRET>
 
 **POST** `/api/video`
 
-Génère une vidéo à partir d'un prompt ou d'une image. **Nécessite Fal.ai** (`FAL_KEY`) — OpenRouter ne propose pas encore de modèles vidéo natifs.
+Génère une vidéo à partir d'un prompt ou d'une image. Priorité : **Replicate gratuits** (minimax/video-01, luma/reframe-video) → Replicate payant → Fal.ai.
 
 #### Headers
 ```
@@ -323,5 +333,6 @@ Toutes les réponses suivent ce format :
 | Variable | Description |
 |----------|-------------|
 | `API_SECRET` | Clé secrète pour l'authentification (min. 8 caractères) |
-| `OPENROUTER_API_KEY` | **Clé API OpenRouter** — utilisée pour chat, image, TTS, normalize |
-| `FAL_KEY` | Clé API Fal.ai — **uniquement pour la génération vidéo** |
+| `OPENROUTER_API_KEY` | Clé API OpenRouter — chat, image fallback, TTS fallback, normalize |
+| `REPLICATE_API_KEY` | **Clé API Replicate** — image, vidéo, TTS prioritaires (modèles gratuits "Try for Free") |
+| `FAL_KEY` | Clé API Fal.ai — fallback vidéo uniquement |

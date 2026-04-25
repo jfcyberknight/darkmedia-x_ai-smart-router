@@ -3,6 +3,7 @@ const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 const { routeChat, fetchFreeOpenRouterModels } = require("../lib/router");
 
+const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -14,7 +15,7 @@ function isImageModel(modelId) {
   return IMAGE_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-async function generateImageWithModel(apiKey, model, prompt) {
+async function generateWithOpenRouter(apiKey, model, prompt) {
   const response = await fetch(OPENROUTER_IMAGE_URL, {
     method: "POST",
     headers: {
@@ -77,10 +78,6 @@ module.exports = async (req, res) => {
     return sendError(res, "Le champ 'prompt' est requis.", 400);
   }
 
-  if (!OPENROUTER_API_KEY) {
-    return sendError(res, "OPENROUTER_API_KEY non configuré.", 503);
-  }
-
   let finalPrompt = prompt;
 
   // Enhancement via OpenRouter chat (si activé)
@@ -98,34 +95,51 @@ module.exports = async (req, res) => {
     }
   }
 
-  try {
-    const payantModel = model || "openai/dall-e-3";
+  let lastErr = null;
 
-    // Récupérer les modèles gratuits et filtrer ceux d'image
-    const allFreeModels = await fetchFreeOpenRouterModels();
-    const freeImageModels = allFreeModels.filter(isImageModel);
-
-    // Construire l'ordre : gratuits image > modèle payant
-    const modelsToTry = [...freeImageModels];
-    if (!modelsToTry.includes(payantModel)) {
-      modelsToTry.push(payantModel);
+  // 1. Essayer Replicate d'abord (modèles gratuits en priorité)
+  if (REPLICATE_API_KEY) {
+    try {
+      const replicate = require("../lib/providers/replicate");
+      console.log(`[api/image] Tentative Replicate (gratuits d'abord)...`);
+      const result = await replicate.generateImage({
+        apiKey: REPLICATE_API_KEY,
+        model,
+        prompt: finalPrompt,
+      });
+      return sendSuccess(res, result, `Image générée avec succès (replicate - ${result.model})`);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[api/image] Échec Replicate:`, err.message);
     }
-
-    let lastErr = null;
-    for (const m of modelsToTry) {
-      try {
-        console.log(`[api/image] Tentative avec ${m}...`);
-        const result = await generateImageWithModel(OPENROUTER_API_KEY, m, finalPrompt);
-        return sendSuccess(res, result, `Image générée avec succès (${m})`);
-      } catch (err) {
-        lastErr = err;
-        console.warn(`[api/image] Échec ${m}:`, err.message);
-      }
-    }
-
-    throw lastErr || new Error("Tous les modèles d'image ont échoué.");
-  } catch (err) {
-    console.error("[api/image]", err.message);
-    return sendError(res, err.message || "Erreur lors de la génération d'image.", 500);
   }
+
+  // 2. Fallback sur OpenRouter
+  if (OPENROUTER_API_KEY) {
+    try {
+      const payantModel = model || "openai/dall-e-3";
+      const allFreeModels = await fetchFreeOpenRouterModels();
+      const freeImageModels = allFreeModels.filter(isImageModel);
+      const modelsToTry = [...freeImageModels];
+      if (!modelsToTry.includes(payantModel)) modelsToTry.push(payantModel);
+
+      for (const m of modelsToTry) {
+        try {
+          console.log(`[api/image] Tentative OpenRouter (${m})...`);
+          const result = await generateWithOpenRouter(OPENROUTER_API_KEY, m, finalPrompt);
+          return sendSuccess(res, result, `Image générée avec succès (${m})`);
+        } catch (err2) {
+          console.warn(`[api/image] Échec OpenRouter ${m}:`, err2.message);
+        }
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  return sendError(
+    res,
+    lastErr?.message || "Aucun provider d'image configuré (REPLICATE_API_KEY ou OPENROUTER_API_KEY manquant)",
+    503
+  );
 };
