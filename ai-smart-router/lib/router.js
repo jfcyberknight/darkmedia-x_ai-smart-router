@@ -1,9 +1,9 @@
+
 const gemini = require("./providers/gemini");
 const groq = require("./providers/groq");
 const nvapi = require("./providers/nvapi");
 const deepseek = require("./providers/deepseek");
 const openrouter = require("./providers/openrouter");
-const ollama = require("./providers/ollama");
 const mistral = require("./providers/mistral");
 
 /** Liste des providers (ordre par défaut ; utilisé aléatoirement pour répartir la charge). */
@@ -19,12 +19,6 @@ const PROVIDERS = [
     generate: groq.generate,
     apiKeyEnv: "GROQ_API_KEY",
     defaultModel: groq.DEFAULT_MODEL,
-  },
-  {
-    id: "ollama",
-    generate: ollama.generate,
-    apiKeyEnv: "OLLAMA_API_KEY", // Optionnel
-    defaultModel: ollama.DEFAULT_MODEL,
   },
   {
     id: "nvapi",
