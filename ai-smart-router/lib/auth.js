@@ -1,5 +1,6 @@
 const crypto = require("crypto");
 const { sendError } = require("./api-response");
+const { getSessionFromRequest } = require("./auth-google");
 
 /**
  * Comparaison constant-time pour éviter les attaques par timing.
@@ -116,4 +117,38 @@ function checkApiSecret(req, res) {
   return true;
 }
 
-module.exports = { checkApiSecret, checkClientAuth, generateSignature, verifySignature };
+/**
+ * Vérifie la session Google OAuth (via cookie auth_session).
+ * Retourne true si session valide, false sinon.
+ */
+function checkGoogleSession(req, res) {
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    sendError(res, "Session Google invalide ou manquante.", 401);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Vérifie l'authentification dans l'ordre :
+ * 1. Client HMAC (X-Client-Key + X-Signature)
+ * 2. Google OAuth Session (cookie auth_session)
+ * 3. API_SECRET (Authorization: Bearer ou X-API-Key)
+ */
+function checkAuth(req, res) {
+  // 1. Client HMAC
+  const hasClientKey = req.headers["x-client-key"];
+  if (hasClientKey) {
+    return checkClientAuth(req, res);
+  }
+
+  // 2. Google OAuth Session
+  const session = getSessionFromRequest(req);
+  if (session) return true;
+
+  // 3. API_SECRET (legacy / fallback)
+  return checkApiSecret(req, res);
+}
+
+module.exports = { checkApiSecret, checkClientAuth, checkGoogleSession, checkAuth, generateSignature, verifySignature };

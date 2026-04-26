@@ -131,7 +131,11 @@ module.exports = async (req, res) => {
                     SwaggerUIStandalonePreset
                 ],
                 layout: "BaseLayout",
-                defaultModelsExpandDepth: -1
+                defaultModelsExpandDepth: -1,
+                requestInterceptor: (req) => {
+                    req.credentials = 'include';
+                    return req;
+                }
             });
         };
     </script>

@@ -1,4 +1,4 @@
-const { checkApiSecret, checkClientAuth } = require("../lib/auth");
+const { checkAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 const { fetchFreeOpenRouterModels } = require("../lib/router");
@@ -53,12 +53,7 @@ module.exports = async (req, res) => {
 
   if (req.method === "OPTIONS") return res.status(204).end();
 
-  const hasClientKey = req.headers["x-client-key"];
-  if (hasClientKey) {
-    if (!checkClientAuth(req, res)) return;
-  } else {
-    if (!checkApiSecret(req, res)) return;
-  }
+  if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
     return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);

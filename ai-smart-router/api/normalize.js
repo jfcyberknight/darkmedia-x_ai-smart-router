@@ -1,5 +1,5 @@
 const { routeChat } = require("../lib/router");
-const { checkApiSecret, checkClientAuth } = require("../lib/auth");
+const { checkAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 
@@ -89,14 +89,7 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
-  // Essayer authentification client/serveur d'abord (nouveau système)
-  const hasClientKey = req.headers["x-client-key"];
-  if (hasClientKey) {
-    if (!checkClientAuth(req, res)) return;
-  } else {
-    // Sinon utiliser l'ancien système
-    if (!checkApiSecret(req, res)) return;
-  }
+  if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
     return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);

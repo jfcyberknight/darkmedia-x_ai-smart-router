@@ -24,11 +24,8 @@
       "ApiKeyAuth": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-API-Key"
-      },
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
+        "name": "X-API-Key",
+        "description": "Alternative auth if not logged in via Google OAuth."
       }
     },
     "schemas": {
@@ -297,7 +294,7 @@
         "tags": ["AI Operations"],
         "summary": "Chat Completion",
         "description": "Route a chat request to an AI provider with fallback logic. OpenRouter is the default provider. If a model reaches its limit (429/quota), cheaper fallback models are tried automatically before switching provider.",
-        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "security": [{ "ApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -340,7 +337,7 @@
         "tags": ["AI Operations"],
         "summary": "Text Normalization",
         "description": "Extract structured data from free-text.",
-        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "security": [{ "ApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -370,7 +367,7 @@
         "tags": ["Media Generation"],
         "summary": "Generate Image",
         "description": "Generate an image from a text prompt using Replicate (free models first) with OpenRouter fallback.",
-        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "security": [{ "ApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -413,7 +410,7 @@
         "tags": ["Media Generation"],
         "summary": "Text-to-Speech",
         "description": "Synthesize speech from text using Replicate (free models first) with OpenRouter fallback.",
-        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "security": [{ "ApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -457,7 +454,7 @@
         "tags": ["Media Generation"],
         "summary": "Generate Video",
         "description": "Generate a video from text or image using Replicate (free models first) with Fal.ai fallback.",
-        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "security": [{ "ApiKeyAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
