@@ -96,11 +96,11 @@ function checkClientAuth(req, res) {
  * En-têtes acceptés : Authorization: Bearer <API_SECRET> ou X-API-Key: <API_SECRET>
  */
 function checkApiSecret(req, res) {
-  const secret = process.env.API_SECRET;
+  const secret = process.env.AI_SMART_ROUTER_HEADER_KEY || process.env.API_SECRET;
   if (!secret || secret.length < 8) {
     sendError(
       res,
-      "Accès refusé. Définissez API_SECRET dans les variables d'environnement (8 caractères min).",
+      "Accès refusé. Définissez AI_SMART_ROUTER_HEADER_KEY dans les variables d'environnement (8 caractères min).",
       401
     );
     return false;

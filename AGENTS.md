@@ -15,7 +15,7 @@
 - `npm run rag:index` / `npm run rag:push` — RAG index/push workflows (Python scripts at root).
 
 ## Environment & deployment essentials
-- `API_SECRET` is **required**; without it every request returns 401.
+- `AI_SMART_ROUTER_HEADER_KEY` (legacy name: `API_SECRET`) is **required**; without it every request returns 401.
 - `OPENROUTER_API_KEY` must be set for chat, image fallback, TTS fallback, and normalize.
 - `REPLICATE_API_KEY` must be set for image, video, and TTS (uses "Try for Free" free models first).
 - `.env` variables are **not** automatically synced to Vercel — run `npm run env:sync` or use `npm run env:push`.
