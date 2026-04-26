@@ -33,6 +33,10 @@ const POLL_INTERVAL_MS = 1000;
 const MAX_POLL_DURATION_MS = 120_000; // 2 minutes max
 
 async function createPrediction(apiKey, model, input) {
+  // Debug: log first/last 4 chars of key to verify it's loaded correctly
+  const keyPreview = apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined';
+  console.log(`[Replicate] Using API key: ${keyPreview} (length: ${apiKey?.length})`);
+  
   const res = await fetch(`${REPLICATE_API_URL}/models/${model}/predictions`, {
     method: "POST",
     headers: {

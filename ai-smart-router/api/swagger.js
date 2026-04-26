@@ -1,11 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { getSessionFromRequest } = require("../lib/auth-google");
 
 module.exports = async (req, res) => {
-  const session = getSessionFromRequest(req);
-  if (!session) return res.redirect("/api/auth/login");
-
   try {
     let filePath = path.join(process.cwd(), 'openapi.json');
     if (!fs.existsSync(filePath)) filePath = path.join(process.cwd(), '..', 'openapi.json');
@@ -111,8 +107,7 @@ module.exports = async (req, res) => {
     <header class="custom-header">
         <a href="/" class="brand-logo">DARKMEDIA-X</a>
         <div class="user-info">
-            <span>${session.email}</span>
-            <img src="${session.picture || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" alt="Avatar">
+            <span>API Docs</span>
         </div>
     </header>
 
