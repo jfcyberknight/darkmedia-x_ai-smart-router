@@ -56,25 +56,26 @@ module.exports = async (req, res) => {
   if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
-    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405, "METHOD_NOT_ALLOWED");
   }
 
   let body;
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, "Body JSON invalide.", 400);
+    return sendError(res, "Body JSON invalide.", 400, "INVALID_JSON");
   }
 
   const { text, voice, model } = body;
   if (!text || typeof text !== "string") {
-    return sendError(res, "Champ 'text' requis (string).", 400);
+    return sendError(res, "Champ 'text' requis (string).", 400, "VALIDATION_ERROR", { field: "text", reason: "required" });
   }
   if (text.length > 1000) {
-    return sendError(res, "Texte trop long (max 1000 caractères).", 400);
+    return sendError(res, "Texte trop long (max 1000 caractères).", 400, "VALIDATION_ERROR", { field: "text", reason: "too_long", max: 1000 });
   }
 
   let lastErr = null;
+  let replicateUnauthorized = false;
 
   // 1. Essayer Replicate d'abord (modèles gratuits en priorité)
   if (REPLICATE_API_KEY) {
@@ -93,8 +94,13 @@ module.exports = async (req, res) => {
         `Audio généré avec succès (replicate - ${result.model})`
       );
     } catch (err) {
-      lastErr = err;
-      console.warn(`[api/tts] Échec Replicate:`, err.message);
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        replicateUnauthorized = true;
+        console.warn(`[api/tts] Replicate clé invalide (401), skip vers OpenRouter...`);
+      } else {
+        lastErr = err;
+        console.warn(`[api/tts] Échec Replicate:`, err.message);
+      }
     }
   }
 

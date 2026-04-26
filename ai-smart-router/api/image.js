@@ -58,19 +58,19 @@ module.exports = async (req, res) => {
   if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
-    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405, "METHOD_NOT_ALLOWED");
   }
 
   let body;
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, "Body JSON invalide.", 400);
+    return sendError(res, "Body JSON invalide.", 400, "INVALID_JSON");
   }
 
   const { prompt, model, enhance } = body;
   if (!prompt) {
-    return sendError(res, "Le champ 'prompt' est requis.", 400);
+    return sendError(res, "Le champ 'prompt' est requis.", 400, "VALIDATION_ERROR", { field: "prompt", reason: "required" });
   }
 
   let finalPrompt = prompt;
@@ -91,6 +91,7 @@ module.exports = async (req, res) => {
   }
 
   let lastErr = null;
+  let replicateUnauthorized = false;
 
   // 1. Essayer Replicate d'abord (modèles gratuits en priorité)
   if (REPLICATE_API_KEY) {
@@ -104,8 +105,13 @@ module.exports = async (req, res) => {
       });
       return sendSuccess(res, result, `Image générée avec succès (replicate - ${result.model})`);
     } catch (err) {
-      lastErr = err;
-      console.warn(`[api/image] Échec Replicate:`, err.message);
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        replicateUnauthorized = true;
+        console.warn(`[api/image] Replicate clé invalide (401), skip vers OpenRouter...`);
+      } else {
+        lastErr = err;
+        console.warn(`[api/image] Échec Replicate:`, err.message);
+      }
     }
   }
 

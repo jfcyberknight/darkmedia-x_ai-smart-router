@@ -17,7 +17,6 @@ const FREE_IMAGE_MODELS = [
 
 const FREE_VIDEO_MODELS = [
   "minimax/video-01",
-  "luma/reframe-video",
 ];
 
 const FREE_TTS_MODELS = [
@@ -33,22 +32,22 @@ const POLL_INTERVAL_MS = 1000;
 const MAX_POLL_DURATION_MS = 120_000; // 2 minutes max
 
 async function createPrediction(apiKey, model, input) {
-  // Debug: log first/last 4 chars of key to verify it's loaded correctly
-  const keyPreview = apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'undefined';
-  console.log(`[Replicate] Using API key: ${keyPreview} (length: ${apiKey?.length})`);
-  
   const res = await fetch(`${REPLICATE_API_URL}/models/${model}/predictions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Token ${apiKey}`,
-      "Prefer": "wait", // Essayer la réponse synchrone d'abord
+      "Prefer": "wait",
     },
     body: JSON.stringify({ input }),
   });
 
   if (!res.ok) {
     const err = await res.text();
+    // Si 401, on ne retry pas — la clé est invalide
+    if (res.status === 401) {
+      throw new Error(`REPLICATE_UNAUTHORIZED`);
+    }
     throw new Error(`Replicate API: ${res.status} ${err}`);
   }
 
@@ -134,6 +133,10 @@ async function generateImage({ apiKey, model = null, prompt }) {
       if (output) return { imageUrl: output, provider: "replicate", model: m };
     } catch (err) {
       lastErr = err;
+      // Si clé invalide (401), ne pas essayer les autres modèles
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        throw err;
+      }
       console.warn(`[Replicate] Échec ${m}:`, err.message);
     }
   }
@@ -182,6 +185,9 @@ async function generateVideo({ apiKey, model = null, prompt, image_url }) {
       if (output) return { videoUrl: output, provider: "replicate", model: m };
     } catch (err) {
       lastErr = err;
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        throw err;
+      }
       console.warn(`[Replicate] Échec ${m}:`, err.message);
     }
   }
@@ -208,7 +214,8 @@ async function generateTts({ apiKey, model = null, text, voice = null }) {
   for (const m of modelsToTry) {
     try {
       console.log(`[Replicate] TTS avec ${m}...`);
-      const input = { text };
+      // resemble-ai/chatterbox attend "prompt", pas "text"
+      const input = { prompt: text };
       if (voice) input.voice = voice;
 
       const prediction = await createPrediction(apiKey, m, input);
@@ -219,7 +226,8 @@ async function generateTts({ apiKey, model = null, text, voice = null }) {
           // Replicate retourne une URL, on la fetch en buffer
           const audioRes = await fetch(output);
           if (!audioRes.ok) throw new Error("Failed to fetch audio from Replicate output");
-          const buffer = await audioRes.buffer();
+          const arrayBuffer = await audioRes.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
           return {
             audio: buffer.toString("base64"),
             contentType: "audio/wav",
@@ -234,7 +242,8 @@ async function generateTts({ apiKey, model = null, text, voice = null }) {
       if (output) {
         const audioRes = await fetch(output);
         if (!audioRes.ok) throw new Error("Failed to fetch audio from Replicate output");
-        const buffer = await audioRes.buffer();
+        const arrayBuffer = await audioRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         return {
           audio: buffer.toString("base64"),
           contentType: "audio/wav",
@@ -244,6 +253,9 @@ async function generateTts({ apiKey, model = null, text, voice = null }) {
       }
     } catch (err) {
       lastErr = err;
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        throw err;
+      }
       console.warn(`[Replicate] Échec ${m}:`, err.message);
     }
   }

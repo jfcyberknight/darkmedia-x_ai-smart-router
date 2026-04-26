@@ -29,29 +29,70 @@
       }
     },
     "schemas": {
-      "Envelope": {
+      "Meta": {
         "type": "object",
         "properties": {
-          "id": {
+          "requestId": {
             "type": "string",
-            "nullable": true,
             "example": "req-a1b2c3d4"
           },
-          "statut": {
+          "timestamp": {
             "type": "string",
-            "enum": [
-              "actif",
-              "inactif",
-              "erreur"
-            ]
+            "format": "date-time",
+            "example": "2026-04-25T12:34:56.789Z"
           },
           "message": {
             "type": "string",
             "example": "Succès"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
           },
-          "donnees": {
+          "data": {
             "type": "object",
             "nullable": true
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "VALIDATION_ERROR"
+          },
+          "message": {
+            "type": "string",
+            "example": "Le champ 'prompt' est requis."
+          },
+          "details": {
+            "type": "object",
+            "nullable": true,
+            "example": { "field": "prompt", "reason": "required" }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
           }
         }
       },
@@ -263,11 +304,11 @@
               "application/json": {
                 "schema": {
                   "allOf": [
-                    { "$ref": "#/components/schemas/Envelope" },
+                    { "$ref": "#/components/schemas/SuccessResponse" },
                     {
                       "type": "object",
                       "properties": {
-                        "donnees": {
+                        "data": {
                           "type": "object",
                           "properties": {
                             "ok": { "type": "boolean", "example": true },
@@ -316,11 +357,11 @@
               "application/json": {
                 "schema": {
                   "allOf": [
-                    { "$ref": "#/components/schemas/Envelope" },
+                    { "$ref": "#/components/schemas/SuccessResponse" },
                     {
                       "type": "object",
                       "properties": {
-                        "donnees": { "$ref": "#/components/schemas/ChatResponse" }
+                        "data": { "$ref": "#/components/schemas/ChatResponse" }
                       }
                     }
                   ]
@@ -328,7 +369,14 @@
               }
             }
           },
-          "401": { "description": "Unauthorized" }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
         }
       }
     },
@@ -354,11 +402,18 @@
             "description": "Data successfully extracted",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Envelope" }
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
               }
             }
           },
-          "401": { "description": "Unauthorized" }
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
         }
       }
     },
@@ -388,11 +443,11 @@
               "application/json": {
                 "schema": {
                   "allOf": [
-                    { "$ref": "#/components/schemas/Envelope" },
+                    { "$ref": "#/components/schemas/SuccessResponse" },
                     {
                       "type": "object",
                       "properties": {
-                        "donnees": { "$ref": "#/components/schemas/ImageResponse" }
+                        "data": { "$ref": "#/components/schemas/ImageResponse" }
                       }
                     }
                   ]
@@ -400,8 +455,22 @@
               }
             }
           },
-          "400": { "description": "Bad request" },
-          "401": { "description": "Unauthorized" }
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
         }
       }
     },
@@ -431,11 +500,11 @@
               "application/json": {
                 "schema": {
                   "allOf": [
-                    { "$ref": "#/components/schemas/Envelope" },
+                    { "$ref": "#/components/schemas/SuccessResponse" },
                     {
                       "type": "object",
                       "properties": {
-                        "donnees": { "$ref": "#/components/schemas/TtsResponse" }
+                        "data": { "$ref": "#/components/schemas/TtsResponse" }
                       }
                     }
                   ]
@@ -443,9 +512,30 @@
               }
             }
           },
-          "400": { "description": "Bad request" },
-          "401": { "description": "Unauthorized" },
-          "503": { "description": "No TTS provider configured" }
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "No TTS provider configured",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
         }
       }
     },
@@ -475,11 +565,11 @@
               "application/json": {
                 "schema": {
                   "allOf": [
-                    { "$ref": "#/components/schemas/Envelope" },
+                    { "$ref": "#/components/schemas/SuccessResponse" },
                     {
                       "type": "object",
                       "properties": {
-                        "donnees": { "$ref": "#/components/schemas/VideoResponse" }
+                        "data": { "$ref": "#/components/schemas/VideoResponse" }
                       }
                     }
                   ]
@@ -487,9 +577,30 @@
               }
             }
           },
-          "400": { "description": "Bad request" },
-          "401": { "description": "Unauthorized" },
-          "503": { "description": "No video provider configured" }
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "No video provider configured",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
         }
       }
     }

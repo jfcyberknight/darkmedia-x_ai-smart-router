@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   applySecurityHeaders(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
-    return sendError(res, "Méthode non autorisée", 405);
+    return sendError(res, "Méthode non autorisée", 405, "METHOD_NOT_ALLOWED");
   }
   sendSuccess(
     res,

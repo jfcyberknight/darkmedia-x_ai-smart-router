@@ -57,6 +57,46 @@ La liste des modèles gratuits OpenRouter est mise en cache pendant 1 heure.
 
 ---
 
+## Format de réponse
+
+Toutes les réponses suivent le format standard REST ci-dessous.
+
+### ✅ Succès (2xx)
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T03:09:18.032Z",
+    "message": "Réponse générée"
+  }
+}
+```
+
+### ❌ Erreur (4xx/5xx)
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Le champ 'prompt' est requis.",
+    "details": {
+      "field": "prompt",
+      "reason": "required"
+    }
+  },
+  "meta": {
+    "requestId": "req-1d818275",
+    "timestamp": "2026-04-26T03:09:23.166Z"
+  }
+}
+```
+
+---
+
 ## Endpoints
 
 ### 1. Chat Completion
@@ -89,13 +129,16 @@ Authorization: Bearer <API_SECRET>
 #### Réponse 200
 ```json
 {
-  "id": "req-a1b2c3d4",
-  "statut": "actif",
-  "message": "Réponse générée",
-  "donnees": {
-    "content": "Les microservices sont...",
+  "success": true,
+  "data": {
+    "content": "Les microservices sont une architecture logicielle qui structure une application comme un ensemble de services faiblement couplés.",
     "provider": "openrouter",
     "model": "meta-llama/llama-3.3-70b-instruct:free"
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Réponse générée"
   }
 }
 ```
@@ -132,13 +175,35 @@ Authorization: Bearer <API_SECRET>
 #### Réponse 200
 ```json
 {
-  "id": "req-a1b2c3d4",
-  "statut": "actif",
-  "message": "Image générée avec succès (google/gemma-3-4b-it:free)",
-  "donnees": {
-    "imageUrl": "https://...",
-    "provider": "openrouter",
-    "model": "google/gemma-3-4b-it:free"
+  "success": true,
+  "data": {
+    "imageUrl": "https://replicate.delivery/.../output.png",
+    "provider": "replicate",
+    "model": "google/imagen-4"
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Image générée avec succès (replicate - google/imagen-4)"
+  }
+}
+```
+
+#### Réponse 400 (exemple)
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Le champ 'prompt' est requis.",
+    "details": {
+      "field": "prompt",
+      "reason": "required"
+    }
+  },
+  "meta": {
+    "requestId": "req-1d818275",
+    "timestamp": "2026-04-26T12:34:56.789Z"
   }
 }
 ```
@@ -175,12 +240,15 @@ Authorization: Bearer <API_SECRET>
 #### Réponse 200
 ```json
 {
-  "id": "req-a1b2c3d4",
-  "statut": "actif",
-  "message": "Audio généré avec succès (cartesia/sonic-2:free)",
-  "donnees": {
+  "success": true,
+  "data": {
     "audio": "//uQZ... (base64)",
-    "contentType": "audio/mp3"
+    "contentType": "audio/wav"
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Audio généré avec succès (replicate - resemble-ai/chatterbox)"
   }
 }
 ```
@@ -219,13 +287,16 @@ Authorization: Bearer <API_SECRET>
 #### Réponse 200
 ```json
 {
-  "id": "req-a1b2c3d4",
-  "statut": "actif",
-  "message": "Vidéo générée avec succès (fal)",
-  "donnees": {
-    "videoUrl": "https://fal.media/...",
-    "provider": "fal",
-    "model": "fal-ai/fast-svd-lcm"
+  "success": true,
+  "data": {
+    "videoUrl": "https://replicate.delivery/.../output.mp4",
+    "provider": "replicate",
+    "model": "minimax/video-01"
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Vidéo générée avec succès (replicate - minimax/video-01)"
   }
 }
 ```
@@ -258,10 +329,8 @@ Authorization: Bearer <API_SECRET>
 #### Réponse 200
 ```json
 {
-  "id": "req-a1b2c3d4",
-  "statut": "actif",
-  "message": "Données extraites",
-  "donnees": {
+  "success": true,
+  "data": {
     "id": "USR-001",
     "statut": "actif",
     "donnees": {
@@ -270,6 +339,11 @@ Authorization: Bearer <API_SECRET>
       "date_iso": "2026-03-13"
     },
     "message": "Test terminé avec succès"
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Données extraites"
   }
 }
 ```
@@ -285,29 +359,17 @@ Vérifie l'état du service. **Public** (pas d'authentification requise).
 #### Réponse 200
 ```json
 {
-  "id": null,
-  "statut": "actif",
-  "message": "Service opérationnel",
-  "donnees": {
+  "success": true,
+  "data": {
     "ok": true,
     "service": "ai-smart-router",
     "providers": ["openrouter"]
+  },
+  "meta": {
+    "requestId": "req-a1b2c3d4",
+    "timestamp": "2026-04-26T12:34:56.789Z",
+    "message": "Service opérationnel"
   }
-}
-```
-
----
-
-## Envelope Commun (toutes les réponses)
-
-Toutes les réponses suivent ce format :
-
-```json
-{
-  "id": "string|null — identifiant de requête",
-  "statut": "actif|inactif|erreur",
-  "message": "string — description du résultat",
-  "donnees": { ... } | null
 }
 ```
 
@@ -315,16 +377,18 @@ Toutes les réponses suivent ce format :
 
 ## Codes d'erreur communs
 
-| Code | Signification |
-|------|---------------|
-| `400` | Bad Request (body invalide, champ manquant) |
-| `401` | Unauthorized (API_SECRET manquant ou invalide) |
-| `405` | Method Not Allowed |
-| `413` | Payload Too Large |
-| `422` | Unprocessable Entity (réponse modèle invalide) |
-| `500` | Erreur serveur interne |
-| `502` | Tous les modèles ont échoué |
-| `503` | Service non configuré (clé API manquante) |
+| HTTP | Code machine | Signification |
+|------|--------------|---------------|
+| `400` | `INVALID_JSON` | Body JSON invalide |
+| `400` | `VALIDATION_ERROR` | Champ manquant ou invalide (voir `error.details`) |
+| `401` | `AUTH_REQUIRED` | Authentification manquante ou invalide |
+| `405` | `METHOD_NOT_ALLOWED` | Méthode HTTP non autorisée |
+| `413` | `PAYLOAD_TOO_LARGE` | Body trop volumineux |
+| `422` | `INVALID_MODEL_RESPONSE` | Réponse du modèle non valide |
+| `429` | `RATE_LIMITED` | Trop de requêtes |
+| `500` | `ROUTING_ERROR` | Erreur serveur interne |
+| `502` | `ROUTING_ERROR` | Tous les modèles/providers ont échoué |
+| `503` | `SERVICE_UNAVAILABLE` | Service non configuré (clé API manquante) |
 
 ---
 

@@ -30,27 +30,27 @@ module.exports = async (req, res) => {
   if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
-    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405, "METHOD_NOT_ALLOWED");
   }
 
   const rawBody =
     typeof req.body === "string" ? req.body : (req.body && JSON.stringify(req.body)) || "";
   const sizeCheck = validateBodySize(rawBody);
   if (!sizeCheck.ok) {
-    return sendError(res, sizeCheck.error, 413);
+    return sendError(res, sizeCheck.error, 413, "PAYLOAD_TOO_LARGE");
   }
 
   let body;
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, "Body JSON invalide.", 400);
+    return sendError(res, "Body JSON invalide.", 400, "INVALID_JSON");
   }
 
   const { messages, model } = body;
   const msgValidation = validateMessages(messages);
   if (!msgValidation.ok) {
-    return sendError(res, msgValidation.error, 400);
+    return sendError(res, msgValidation.error, 400, "VALIDATION_ERROR");
   }
 
   try {
@@ -70,6 +70,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error("[api/chat]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
-    return sendError(res, err.message || "Erreur lors du routage vers les APIs IA.", status);
+    return sendError(res, err.message || "Erreur lors du routage vers les APIs IA.", status, "ROUTING_ERROR");
   }
 };

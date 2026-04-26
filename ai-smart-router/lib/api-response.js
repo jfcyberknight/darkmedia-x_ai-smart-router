@@ -9,51 +9,59 @@ function genRequestId() {
 }
 
 /**
- * Envelope commun de réponse API (toutes les routes).
- * @param {string|null} id - Identifiant de la requête (optionnel)
- * @param {'actif'|'inactif'|'erreur'} statut
- * @param {object|array|null} donnees - Payload métier
- * @param {string} message - Résumé court ou message d'erreur
- * @returns {object}
- */
-function envelope(id, statut, donnees, message) {
-  return {
-    id: id || null,
-    statut,
-    donnees: donnees ?? null,
-    message: typeof message === "string" ? message : "",
-  };
-}
-
-/**
- * Envoie une réponse succès (2xx) au format envelope.
+ * Construit une réponse succès standardisée (best-practices API).
  * @param {object} res - Objet réponse HTTP
- * @param {object|array|null} donnees - Payload métier
- * @param {string} message - Résumé court
+ * @param {object|array|null} data - Payload métier
+ * @param {string} [message=""] - Résumé court
  * @param {number} [statusCode=200]
- * @param {string|null} [requestId=null] - Si null, un id est généré
+ * @param {object} [extraMeta={}] - Métadonnées additionnelles (pagination, etc.)
  */
-function sendSuccess(res, donnees, message, statusCode = 200, requestId = null) {
-  const id = requestId !== undefined ? requestId : genRequestId();
-  res.status(statusCode).json(envelope(id, "actif", donnees, message));
+function sendSuccess(res, data, message = "", statusCode = 200, extraMeta = {}) {
+  const requestId = genRequestId();
+  const meta = {
+    requestId,
+    timestamp: new Date().toISOString(),
+    ...(message && { message }),
+    ...extraMeta,
+  };
+
+  res.status(statusCode).json({
+    success: true,
+    data: data ?? undefined,
+    meta,
+  });
 }
 
 /**
- * Envoie une réponse erreur (4xx/5xx) au format envelope.
- * Pas de fuite de détail technique dans message (usage production).
+ * Construit une réponse erreur standardisée (best-practices API).
+ * Pas de fuite de détail technique sensible dans message (usage production).
  * @param {object} res - Objet réponse HTTP
  * @param {string} message - Message lisible pour le client
- * @param {number} statusCode - 400, 401, 404, 405, 413, 422, 500, 502, etc.
- * @param {string|null} [requestId=null]
+ * @param {number} statusCode - 400, 401, 404, 405, 413, 422, 429, 500, 502, etc.
+ * @param {string} [errorCode="ERROR"] - Code machine-readable (ex: "AUTH_REQUIRED", "RATE_LIMITED")
+ * @param {object} [details=null] - Détails structurés de l'erreur (champs invalides, etc.)
  */
-function sendError(res, message, statusCode, requestId = null) {
-  const id = requestId !== undefined ? requestId : genRequestId();
-  res.status(statusCode).json(envelope(id, "erreur", null, message));
+function sendError(res, message, statusCode, errorCode = "ERROR", details = null) {
+  const requestId = genRequestId();
+
+  const errorPayload = {
+    code: errorCode,
+    message,
+    ...(details && { details }),
+  };
+
+  res.status(statusCode).json({
+    success: false,
+    error: errorPayload,
+    meta: {
+      requestId,
+      timestamp: new Date().toISOString(),
+    },
+  });
 }
 
 module.exports = {
   genRequestId,
-  envelope,
   sendSuccess,
   sendError,
 };

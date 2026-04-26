@@ -92,22 +92,22 @@ module.exports = async (req, res) => {
   if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
-    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405, "METHOD_NOT_ALLOWED");
   }
 
   let body;
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, "Body JSON invalide.", 400);
+    return sendError(res, "Body JSON invalide.", 400, "INVALID_JSON");
   }
 
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) {
-    return sendError(res, 'Le champ "text" (string) est requis.', 400);
+    return sendError(res, 'Le champ "text" (string) est requis.', 400, "VALIDATION_ERROR", { field: "text", reason: "required" });
   }
   if (text.length > MAX_TEXT_LENGTH) {
-    return sendError(res, "Texte trop long.", 413);
+    return sendError(res, "Texte trop long.", 413, "PAYLOAD_TOO_LARGE");
   }
 
   const messages = [
@@ -124,10 +124,10 @@ module.exports = async (req, res) => {
     return sendSuccess(res, data, "Données extraites");
   } catch (err) {
     if (err instanceof SyntaxError) {
-      return sendError(res, "Réponse du modèle non valide (JSON invalide).", 422);
+      return sendError(res, "Réponse du modèle non valide (JSON invalide).", 422, "INVALID_MODEL_RESPONSE");
     }
     console.error("[api/normalize]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
-    return sendError(res, err.message || "Erreur lors de l'extraction.", status);
+    return sendError(res, err.message || "Erreur lors de l'extraction.", status, "EXTRACTION_ERROR");
   }
 };

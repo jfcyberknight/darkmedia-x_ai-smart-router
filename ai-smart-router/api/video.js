@@ -19,19 +19,19 @@ module.exports = async (req, res) => {
   if (!checkAuth(req, res)) return;
 
   if (req.method !== "POST") {
-    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
+    return sendError(res, "Méthode non autorisée. Utilisez POST.", 405, "METHOD_NOT_ALLOWED");
   }
 
   let body;
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
-    return sendError(res, "Body JSON invalide.", 400);
+    return sendError(res, "Body JSON invalide.", 400, "INVALID_JSON");
   }
 
   const { prompt, image_url, model, enhance } = body;
   if (!prompt && !image_url) {
-    return sendError(res, "Champ 'prompt' ou 'image_url' requis.", 400);
+    return sendError(res, "Champ 'prompt' ou 'image_url' requis.", 400, "VALIDATION_ERROR", { field: "prompt|image_url", reason: "required" });
   }
 
   let finalPrompt = prompt || "";
@@ -50,9 +50,11 @@ module.exports = async (req, res) => {
   }
 
   let lastErr = null;
+  let replicateUnauthorized = false;
 
   // 1. Essayer Replicate d'abord (modèles gratuits en priorité)
-  if (REPLICATE_API_KEY) {
+  // Les modèles gratuits Replicate exigent un prompt non vide
+  if (REPLICATE_API_KEY && finalPrompt) {
     try {
       const replicate = require("../lib/providers/replicate");
       console.log(`[api/video] Tentative Replicate (gratuits d'abord)...`);
@@ -64,9 +66,16 @@ module.exports = async (req, res) => {
       });
       return sendSuccess(res, result, `Vidéo générée avec succès (replicate - ${result.model})`);
     } catch (err) {
-      lastErr = err;
-      console.warn(`[api/video] Échec Replicate:`, err.message);
+      if (err.message === "REPLICATE_UNAUTHORIZED") {
+        replicateUnauthorized = true;
+        console.warn(`[api/video] Replicate clé invalide (401), skip vers Fal.ai...`);
+      } else {
+        lastErr = err;
+        console.warn(`[api/video] Échec Replicate:`, err.message);
+      }
     }
+  } else if (REPLICATE_API_KEY && !finalPrompt) {
+    console.log(`[api/video] Skip Replicate : prompt vide requis par les modèles gratuits.`);
   }
 
   // 2. Fallback sur Fal.ai
@@ -112,6 +121,7 @@ module.exports = async (req, res) => {
   return sendError(
     res,
     lastErr?.message || "Aucun provider vidéo configuré (REPLICATE_API_KEY ou FAL_KEY manquant)",
-    503
+    503,
+    "SERVICE_UNAVAILABLE"
   );
 };
