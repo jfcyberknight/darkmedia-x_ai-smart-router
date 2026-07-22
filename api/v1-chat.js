@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { routeChat } = require("../lib/router");
+const { routeChat, PROVIDERS } = require("../lib/router");
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 
@@ -12,17 +12,28 @@ const { applySecurityHeaders } = require("../lib/security-headers");
  * standard ({choices:[{message:{content}}]}). En interne, le router choisit
  * un provider (ordre aléatoire + fallback) — la centralisation recherchée.
  *
- * - Texte : le `model` reçu est IGNORÉ (le router impose ses défauts + fallback,
- *   c'est tout l'intérêt : un provider change -> on corrige ici, pas dans l'app).
+ * - Texte, cas par défaut : le `model` reçu est IGNORÉ (le router impose ses
+ *   défauts + fallback, c'est tout l'intérêt : un provider change -> on corrige
+ *   ici, pas dans l'app).
+ * - Texte, ciblage explicite (opt-in) : si la requête fournit un hint provider
+ *   (`provider` dans le body OU en-tête `X-AI-Provider`), le router se restreint
+ *   à CE provider et HONORE le `model` reçu. Cela permet à une app d'imposer un
+ *   modèle précis (ex. openrouter / openrouter/fusion) tout en égressant par le
+ *   router (clés centralisées, un seul point de correction). Provider inconnu
+ *   -> 400.
  * - Multimodal (content en tableau, ex. image_url) : restreint aux providers
  *   OpenAI-compat capables de vision, et le `model` reçu EST respecté (un modèle
  *   vision est spécifique). Providers visés : openrouter, groq, nvapi, deepseek,
- *   mistral.
+ *   mistral. Prioritaire sur le hint provider.
  *
  * Auth : identique à /api/chat (Bearer / X-API-Key, ou HMAC X-Client-Key).
  */
 
 const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral"];
+
+// Ids de providers connus (source de vérité : lib/router.js) pour valider un
+// hint provider explicite.
+const KNOWN_PROVIDERS = new Set(PROVIDERS.map((p) => p.id));
 
 function sendOpenAiError(res, status, message, type = "invalid_request_error") {
   res.status(status).json({ error: { message, type, code: null } });
@@ -33,7 +44,7 @@ module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp"
+    "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp, X-AI-Provider"
   );
   applySecurityHeaders(res);
 
@@ -73,6 +84,16 @@ module.exports = async (req, res) => {
   // Détection multimodale : au moins un content en tableau (blocs image_url/text).
   const isMultimodal = messages.some((m) => Array.isArray(m.content));
 
+  // Hint provider explicite (opt-in) : body.provider ou en-tête X-AI-Provider.
+  const providerHint = (
+    (typeof body.provider === "string" && body.provider) ||
+    req.headers["x-ai-provider"] ||
+    ""
+  )
+    .toString()
+    .trim()
+    .toLowerCase();
+
   let onlyProviders = null;
   let modelOverrides = {};
   if (isMultimodal) {
@@ -80,6 +101,19 @@ module.exports = async (req, res) => {
     // Le modèle vision est spécifique : on respecte celui envoyé par l'app.
     if (typeof body.model === "string" && body.model) {
       for (const id of VISION_CAPABLE) modelOverrides[id] = body.model;
+    }
+  } else if (providerHint) {
+    // Ciblage explicite : un seul provider, et le modèle reçu est honoré.
+    if (!KNOWN_PROVIDERS.has(providerHint)) {
+      return sendOpenAiError(
+        res,
+        400,
+        `Provider inconnu : "${providerHint}". Connus : ${[...KNOWN_PROVIDERS].join(", ")}.`
+      );
+    }
+    onlyProviders = [providerHint];
+    if (typeof body.model === "string" && body.model) {
+      modelOverrides[providerHint] = body.model;
     }
   }
 

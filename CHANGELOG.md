@@ -4,6 +4,21 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 
+### Added
+- **Façade `/v1` — ciblage explicite de provider (opt-in)** : la façade
+  OpenAI-compatible `/v1/chat/completions` honore désormais un **hint provider**
+  (champ `provider` dans le body ou en-tête `X-AI-Provider`). Quand il est
+  fourni, le router se restreint à ce provider et **respecte le `model`** envoyé
+  (ex. `openrouter` / `openrouter/fusion`) — permettant à une app d'imposer un
+  modèle précis tout en égressant par le router (clés centralisées). Sans hint,
+  le comportement par défaut (modèle ignoré, ordre aléatoire + fallback) est
+  **inchangé**. Provider inconnu → `400`. Doc dans `API.md`/`openapi.json`.
+
+### Security
+- **`index_rag.py`** : suppression de la clé API Qdrant **committée en clair** ;
+  `QDRANT_URL`/`QDRANT_API_KEY` sont désormais lues dans l'environnement. ⚠️
+  L'ancienne clé exposée doit être révoquée.
+
 ### Changed
 - **Gemini** : passage à l’API REST (`X-goog-api-key`, modèle `gemini-flash-latest`) à la place du SDK ; suppression de la dépendance `@google/generative-ai`.
 

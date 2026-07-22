@@ -332,6 +332,49 @@
         }
       }
     },
+    "/v1/chat/completions": {
+      "post": {
+        "tags": ["AI Operations"],
+        "summary": "OpenAI-compatible Chat Completion",
+        "description": "OpenAI-compatible facade. An app plugs the router by changing only its base URL (.../v1) and key. By default the `model` is ignored (router picks a provider with random order + fallback). Opt-in explicit targeting: supply a `provider` field in the body OR an `X-AI-Provider` header to restrict to that provider and honor the sent `model` (e.g. openrouter / openrouter/fusion). Unknown provider returns 400. Multimodal requests (array content) restrict to vision-capable providers and honor the model.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["messages"],
+                "properties": {
+                  "messages": { "type": "array", "items": { "type": "object" } },
+                  "model": { "type": "string", "description": "Honored only with an explicit provider hint or for multimodal." },
+                  "provider": {
+                    "type": "string",
+                    "description": "Optional provider hint (opt-in). Restricts routing to this provider and honors `model`.",
+                    "enum": ["gemini", "groq", "ollama", "nvapi", "deepseek", "openrouter", "mistral"]
+                  }
+                }
+              },
+              "example": {
+                "provider": "openrouter",
+                "model": "openrouter/fusion",
+                "messages": [
+                  { "role": "user", "content": "Bonjour" }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OpenAI-standard chat completion object",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "400": { "description": "Invalid body or unknown provider hint" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
     "/api/normalize": {
       "post": {
         "tags": ["AI Operations"],
