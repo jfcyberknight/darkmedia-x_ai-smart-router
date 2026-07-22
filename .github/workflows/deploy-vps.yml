@@ -15,7 +15,7 @@ name: Deploy VPS (ai-smart-router privé)
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths-ignore:
       - "**.md"
       - "docs/**"
@@ -70,8 +70,8 @@ jobs:
               git clone '$REPO_URL' \"\$DIR\"
             fi
             cd \"\$DIR\"
-            git fetch --depth 1 origin main
-            git reset --hard origin/main
+            git fetch --depth 1 origin master
+            git reset --hard origin/master
             # Le .env de prod doit exister sur le serveur (gitignoré).
             if [ ! -f \"\$DIR/.env\" ]; then
               echo '::error::.env absent sur le serveur (\$DIR/.env). Le créer à partir de .env.example avec AI_SMART_ROUTER_HEADER_KEY + au moins une clé provider.'
