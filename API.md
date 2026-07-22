@@ -235,6 +235,49 @@ curl -X GET "https://votre-projet.vercel.app/api/health"
 
 ---
 
+### 4. POST `/v1/chat/completions` (façade OpenAI-compatible)
+
+Façade **compatible OpenAI** : une app existante branche le router en changeant
+uniquement sa **base URL** (`.../v1`) et sa clé. Elle envoie un corps OpenAI
+standard (`{ model?, messages }`) et reçoit une réponse OpenAI standard
+(`{ choices: [{ message: { content } }] }`). En interne, le router choisit un
+provider (ordre aléatoire + fallback).
+
+#### Comportement du champ `model`
+
+| Cas | `model` | Provider(s) |
+|-----|---------|-------------|
+| **Défaut** (texte, aucun hint) | **ignoré** | tous ceux configurés, ordre aléatoire + fallback |
+| **Ciblage explicite** (opt-in) | **honoré** | le provider ciblé uniquement |
+| **Multimodal** (content en tableau) | **honoré** | providers vision : `openrouter`, `groq`, `nvapi`, `deepseek`, `mistral` |
+
+#### Ciblage explicite d’un provider (opt-in)
+
+Pour imposer un provider + modèle précis tout en égressant par le router
+(clés centralisées), fournir un **hint provider** :
+
+- champ **`provider`** dans le body (extension non-standard), **ou**
+- en-tête **`X-AI-Provider`**.
+
+Le router se restreint alors à ce provider et **honore le `model`** envoyé. Un
+provider inconnu renvoie **400**. Sans hint, le comportement par défaut
+(modèle ignoré, ordre aléatoire + fallback) est conservé — rétro-compatible.
+
+Providers valides : `gemini`, `groq`, `ollama`, `nvapi`, `deepseek`,
+`openrouter`, `mistral`.
+
+#### Exemple cURL (Fusion imposé via OpenRouter, à travers le router)
+
+```bash
+curl -X POST "http://dmx-ai-router:8080/v1/chat/completions" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $AI_SMART_ROUTER_HEADER_KEY" \
+  -H "X-AI-Provider: openrouter" \
+  -d '{"model":"openrouter/fusion","messages":[{"role":"user","content":"Bonjour"}]}'
+```
+
+---
+
 ## CORS
 
 - **Access-Control-Allow-Origin** : `*`
