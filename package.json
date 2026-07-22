@@ -1,35 +1,29 @@
 {
   "name": "darkmedia-x-ai-smart-router",
   "version": "2.0.26",
-  "workspaces": [
-    "ai-smart-router"
-  ],
-  "description": "API Vercel qui route les requêtes IA vers Gemini, Groq et autres providers avec fallback automatique",
-  "main": "lib/router.js",
+  "description": "API auto-hébergée qui route les requêtes IA vers Gemini, Groq, NVIDIA, DeepSeek, OpenRouter, Mistral, Ollama avec ordre aléatoire et fallback automatique",
+  "main": "server.js",
   "scripts": {
-    "dev": "vercel dev",
+    "start": "node server.js",
+    "dev": "node server.js",
+    "dev:vercel": "vercel dev",
     "deploy": "vercel --prod",
     "prepare": "node scripts/install-git-hooks.js",
     "env:push": "node scripts/vercel-env-push.js",
     "env:push:root": "node scripts/vercel-env-push.js .env",
     "env:sync": "node scripts/env-sync.js",
     "env:sync:force": "node scripts/env-sync.js --force",
-    "test": "node --test tests/validate-chat.test.js tests/auth.test.js tests/router.test.js tests/providers.test.js tests/deployed.test.js",
-    "test:deployed": "node --test tests/deployed.test.js",
+    "test": "node --test tests/*.test.js",
     "test:providers": "node scripts/test-providers.js",
     "test:api": "node scripts/test-api.js",
-    "test:api:prod": "node scripts/test-api-deployed.js",
-    "rag:index": "python index_rag.py",
-    "rag:push": "python push.py",
-    "rag:status": "rag status",
-    "rag:search": "rag search"
+    "test:api:prod": "node scripts/test-api-deployed.js"
   },
   "keywords": [
     "ai",
-    "vercel",
+    "router",
     "gemini",
     "groq",
-    "router",
+    "self-hosted",
     "api"
   ],
   "author": "Darkmedia-X",
@@ -39,6 +33,7 @@
   },
   "dependencies": {
     "cookie": "^1.1.1",
+    "express": "^4.21.2",
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3"
   }

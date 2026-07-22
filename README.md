@@ -1,6 +1,17 @@
-# AI Smart Router (API Vercel)
+# AI Smart Router
 
-API unique sur **Vercel** que toutes vos applications peuvent appeler. Elle route les requêtes vers les APIs IA disponibles : **ordre aléatoire** à chaque requête (pour répartir le quota) et **fallback automatique** vers le suivant en cas d’erreur ou de quota.
+API unique que toutes vos applications peuvent appeler. Elle route les requêtes vers les APIs IA disponibles : **ordre aléatoire** à chaque requête (pour répartir le quota) et **fallback automatique** vers le suivant en cas d’erreur ou de quota.
+
+> **Deux modes de déploiement**
+> - 🔒 **VPS OVH, privé (recommandé)** — auto-hébergé en Docker, joignable
+>   uniquement par vos autres apps du VPS. Serveur autonome `server.js`
+>   (`npm start`). Voir **[DEPLOY-VPS.md](DEPLOY-VPS.md)**.
+> - ☁️ **Vercel serverless** — les mêmes handlers `api/*` tournent aussi sur
+>   Vercel (voir plus bas). Le serveur autonome et Vercel partagent le code.
+>
+> **Point central** : quand un provider change (ex. OpenRouter retire le slug
+> `:free`), on corrige **un seul endroit** — `lib/providers/*.js` — et toutes
+> les apps qui passent par le router en profitent.
 
 ## Structure du projet
 

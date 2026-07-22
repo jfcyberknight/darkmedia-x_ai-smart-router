@@ -33,8 +33,14 @@ module.exports = async (req, res) => {
     return sendError(res, 'Méthode non autorisée. Utilisez POST.', 405);
   }
 
-  const { text, voice, model } = req.body || {};
-  
+  let body;
+  try {
+    body = typeof req.body === 'string' ? (req.body ? JSON.parse(req.body) : {}) : (req.body || {});
+  } catch {
+    return sendError(res, 'Body JSON invalide.', 400);
+  }
+  const { text, voice, model } = body;
+
   if (!text || typeof text !== 'string') {
     return sendError(res, 'Champ "text" requis (string).', 400);
   }
@@ -44,7 +50,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { default: fetch } = await import('node-fetch');
+    // fetch natif (Node >= 18). Pas de dépendance node-fetch.
     let audioBase64;
     let contentType = 'audio/mp3';
 
@@ -69,7 +75,7 @@ module.exports = async (req, res) => {
       });
 
       if (elevenResponse.ok) {
-        const audioBuffer = await elevenResponse.buffer();
+        const audioBuffer = Buffer.from(await elevenResponse.arrayBuffer());
         audioBase64 = audioBuffer.toString('base64');
       } else {
         const err = await elevenResponse.text();
@@ -95,7 +101,7 @@ module.exports = async (req, res) => {
       });
 
       if (togetherResponse.ok) {
-        const audioBuffer = await togetherResponse.buffer();
+        const audioBuffer = Buffer.from(await togetherResponse.arrayBuffer());
         audioBase64 = audioBuffer.toString('base64');
       } else {
         const err = await togetherResponse.text();
@@ -122,7 +128,7 @@ module.exports = async (req, res) => {
       });
 
       if (openrouterResponse.ok) {
-        const audioBuffer = await openrouterResponse.buffer();
+        const audioBuffer = Buffer.from(await openrouterResponse.arrayBuffer());
         audioBase64 = audioBuffer.toString('base64');
       } else {
         const err = await openrouterResponse.text();
