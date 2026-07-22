@@ -1,0 +1,68 @@
+# =============================================================================
+# ai-smart-router — déploiement PRIVÉ sur le VPS OVH
+# -----------------------------------------------------------------------------
+# Objectif : API IA interne, jamais exposée publiquement. Elle n'est joignable
+# QUE par :
+#   1. Les conteneurs des autres apps du VPS, via le réseau Docker interne
+#      partagé « dmx-net » -> URL : http://dmx-ai-router:8080
+#   2. L'hôte lui-même (diagnostic), via le loopback 127.0.0.1:8781
+#
+# Aucun port n'est publié sur l'interface publique (pas de 0.0.0.0), pas de
+# 80/443, pas de tunnel Cloudflare. Règle d'or du VPS respectée.
+#
+# Convention de préfixe : conteneur/projet en « dmx-ai-router » (isolation).
+# =============================================================================
+
+services:
+  ai-smart-router:
+    build: .
+    image: dmx-ai-router:latest
+    container_name: dmx-ai-router
+    restart: unless-stopped
+
+    # Secrets & clés providers : dans .env sur le serveur (gitignoré).
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      HOST: "0.0.0.0"
+
+    # Exposition PRIVÉE :
+    # - loopback hôte uniquement (diagnostic / apps tournant hors Docker).
+    #   Rien sur l'IP publique du VPS.
+    ports:
+      - "127.0.0.1:8781:8080"
+
+    networks:
+      - dmx-net
+
+    # Durcissement
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    healthcheck:
+      test:
+        ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  # Réseau interne partagé entre les apps du VPS. Créé par cette stack
+  # (nom fixe « dmx-net »). Les autres apps le référencent en `external: true`
+  # et appellent http://dmx-ai-router:8080.
+  dmx-net:
+    name: dmx-net
+    driver: bridge

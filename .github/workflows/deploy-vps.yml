@@ -1,0 +1,104 @@
+name: Deploy VPS (ai-smart-router privé)
+
+# Déploie l'API sur le VPS OVH en auto-hébergement PRIVÉ.
+# Modèle « push sur main → SSH → build local → docker compose up ».
+# L'API n'est jamais exposée publiquement : la vérif de santé passe donc par
+# le loopback du VPS (127.0.0.1:8781), pas par une URL publique.
+#
+# Prérequis (secrets/vars du dépôt — voir docs/secrets.md du dépôt vps-ovh) :
+#   - Secret  VPS_SSH_KEY       : clé privée SSH (même que VPS Ops).
+#   - Secret  VPS_KNOWN_HOSTS   : (optionnel) empreinte hôte, sinon TOFU.
+#   - Var     VPS_HOST/USER/PORT: défauts vps-c4db969c.vps.ovh.ca / ubuntu / 22.
+#
+# Le fichier .env de prod (clés providers + AI_SMART_ROUTER_HEADER_KEY) vit
+# SUR LE SERVEUR dans le dossier de déploiement, gitignoré, jamais committé.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ai-smart-router-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VPS_HOST: ${{ vars.VPS_HOST || 'vps-c4db969c.vps.ovh.ca' }}
+      VPS_USER: ${{ vars.VPS_USER || 'ubuntu' }}
+      VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+      DEPLOY_DIR: /opt/darkmedia-x_ai-smart-router
+      REPO_URL: https://github.com/jfcyberknight/darkmedia-x_ai-smart-router.git
+    steps:
+      - name: Configurer la clé SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$VPS_SSH_KEY" ]; then
+            echo "::error::Secret VPS_SSH_KEY absent — voir docs/secrets.md."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vpsctl
+          chmod 600 ~/.ssh/id_vpsctl
+          if [ -n "$VPS_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$VPS_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+
+      - name: Cloner/mettre à jour + build + up (privé)
+        id: deploy
+        run: |
+          set -o pipefail
+          ssh -i ~/.ssh/id_vpsctl -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "set -e
+            DIR='$DEPLOY_DIR'
+            # Premier déploiement : cloner. Sinon : rafraîchir main (ff-only).
+            if [ ! -d \"\$DIR/.git\" ]; then
+              sudo mkdir -p \"\$DIR\"
+              sudo chown \$(id -u):\$(id -g) \"\$DIR\"
+              git clone '$REPO_URL' \"\$DIR\"
+            fi
+            cd \"\$DIR\"
+            git fetch --depth 1 origin main
+            git reset --hard origin/main
+            # Le .env de prod doit exister sur le serveur (gitignoré).
+            if [ ! -f \"\$DIR/.env\" ]; then
+              echo '::error::.env absent sur le serveur (\$DIR/.env). Le créer à partir de .env.example avec AI_SMART_ROUTER_HEADER_KEY + au moins une clé provider.'
+              exit 1
+            fi
+            # Réseau interne partagé (idempotent).
+            docker network inspect dmx-net >/dev/null 2>&1 || docker network create dmx-net
+            docker compose up -d --build
+            docker image prune -f >/dev/null 2>&1 || true
+            docker ps --filter name=dmx-ai-router
+          " 2>&1 | tee /tmp/deploy-out.txt
+          {
+            echo "### Déploiement ai-smart-router (privé)"
+            echo ""
+            echo '```'
+            cat /tmp/deploy-out.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Vérifier la santé (loopback privé du VPS)
+        run: |
+          for i in 1 2 3 4 5; do
+            code=$(ssh -i ~/.ssh/id_vpsctl -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+              "curl -fsS -o /dev/null -w '%{http_code}' http://127.0.0.1:8781/api/health" || echo 000)
+            echo "tentative $i : HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 8
+          done
+          echo "::error::/api/health ne répond pas 200 sur 127.0.0.1:8781 après déploiement."
+          exit 1
