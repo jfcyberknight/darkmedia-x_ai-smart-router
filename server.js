@@ -19,6 +19,7 @@ const chatHandler = require("./api/chat");
 const normalizeHandler = require("./api/normalize");
 const healthHandler = require("./api/health");
 const ttsHandler = require("./api/tts");
+const v1ChatHandler = require("./api/v1-chat");
 const { sendError } = require("./lib/api-response");
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
@@ -60,6 +61,11 @@ app.options("/api/health", vercel(healthHandler));
 // Endpoints protégés (clé partagée / HMAC).
 app.post("/api/chat", vercel(chatHandler));
 app.options("/api/chat", vercel(chatHandler));
+
+// Façade OpenAI-compatible : brancher une app existante = juste changer sa
+// base URL vers .../v1 (elle continue d'envoyer/parser du OpenAI standard).
+app.post("/v1/chat/completions", vercel(v1ChatHandler));
+app.options("/v1/chat/completions", vercel(v1ChatHandler));
 
 app.post("/api/normalize", vercel(normalizeHandler));
 app.options("/api/normalize", vercel(normalizeHandler));
