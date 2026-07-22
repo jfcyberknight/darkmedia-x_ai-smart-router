@@ -28,44 +28,54 @@ Authorization: Bearer <AI_SMART_ROUTER_HEADER_KEY>
 
 (`GET /api/health` reste public pour les sondes.)
 
-## Mise en service (première fois)
+## Mise en service — via GitHub Secrets (aucun login serveur requis)
 
-Sur le VPS :
+Le `.env` de prod est **construit par le CI** à partir des GitHub Secrets, puis
+poussé sur le serveur (canal SSH chiffré, fichier en `600`). Il suffit donc de
+renseigner les secrets, puis de lancer le workflow.
+
+1. Dépôt `darkmedia-x_ai-smart-router` → **Settings → Secrets and variables →
+   Actions** → ajouter :
+
+   | Secret | Obligatoire | Rôle |
+   |--------|-------------|------|
+   | `VPS_SSH_KEY` | ✅ | Clé privée SSH du VPS (identique à VPS Ops) |
+   | `AI_SMART_ROUTER_HEADER_KEY` | ✅ | Secret d'auth partagé (≥ 8 car.) |
+   | `GEMINI_API_KEY` / `GROQ_API_KEY` / `NVAPI_API_KEY` / `DEEPSEEK_API_KEY` / `OPENROUTER_API_KEY` / `MISTRAL_API_KEY` | ⚠️ au moins un | Clés providers |
+   | `OLLAMA_API_KEY` / `OLLAMA_HOST` | ⬜ | Ollama (cloud/local) |
+   | `ELEVENLABS_API_KEY` / `TOGETHER_API_KEY` / `TTS_API_KEY` / `TTS_API_URL` | ⬜ | Active `/api/tts` |
+   | `VPS_KNOWN_HOSTS` | ⬜ | Empreinte hôte (sinon TOFU) |
+
+   Variables optionnelles : `VPS_HOST` / `VPS_USER` / `VPS_PORT`
+   (défauts `vps-c4db969c.vps.ovh.ca` / `ubuntu` / `22`).
+
+2. Lancer le déploiement : **Actions → « Deploy VPS (ai-smart-router privé) » →
+   Run workflow** (ou pousser un commit sur `master`).
+
+Le workflow : clone/maj sur le VPS → écrit `/opt/.../.env` depuis les secrets →
+`docker network create dmx-net` (idempotent) → `docker compose up -d --build` →
+vérifie `http://127.0.0.1:8781/api/health` (200).
+
+## Déploiements suivants
+
+Chaque **push sur `master`** rejoue le même workflow (le `.env` est réécrit
+depuis les secrets à jour). Rien à faire côté serveur.
+
+### Variante manuelle (sans CI)
+
+Si tu préfères gérer le `.env` à la main sur le serveur :
 
 ```bash
-# 1. Cloner l'app
 sudo mkdir -p /opt/darkmedia-x_ai-smart-router
 sudo chown "$(id -u):$(id -g)" /opt/darkmedia-x_ai-smart-router
 git clone https://github.com/jfcyberknight/darkmedia-x_ai-smart-router.git \
   /opt/darkmedia-x_ai-smart-router
 cd /opt/darkmedia-x_ai-smart-router
-
-# 2. Créer le .env (secrets — jamais committé)
-cp .env.example .env
-# éditer .env : AI_SMART_ROUTER_HEADER_KEY + au moins une clé provider
-
-# 3. Réseau interne partagé (idempotent)
-docker network inspect dmx-net >/dev/null 2>&1 || docker network create dmx-net
-
-# 4. Build + démarrage
+cp .env.example .env   # remplir header key + ≥1 clé provider
+docker network create dmx-net
 docker compose up -d --build
-
-# 5. Vérifier (loopback privé)
 curl -s http://127.0.0.1:8781/api/health
 ```
-
-## Déploiements suivants (automatiques)
-
-Chaque **push sur `main`** déclenche `.github/workflows/deploy-vps.yml` :
-SSH sur le VPS → `git reset --hard origin/main` → `docker compose up -d --build`
-→ vérif santé sur `127.0.0.1:8781`. Le `.env` du serveur n'est jamais touché.
-
-Secrets/variables GitHub requis (dépôt `darkmedia-x_ai-smart-router`) :
-
-- Secret `VPS_SSH_KEY` — clé privée SSH (identique à VPS Ops).
-- Secret `VPS_KNOWN_HOSTS` — *(optionnel)* empreinte hôte (sinon TOFU).
-- Variables `VPS_HOST` / `VPS_USER` / `VPS_PORT` — *(optionnel)* défauts
-  `vps-c4db969c.vps.ovh.ca` / `ubuntu` / `22`.
 
 ## Comment une autre app du VPS consomme le router
 
