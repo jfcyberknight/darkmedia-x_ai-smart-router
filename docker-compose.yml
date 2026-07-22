@@ -60,9 +60,11 @@ services:
         max-file: "3"
 
 networks:
-  # Réseau interne partagé entre les apps du VPS. Créé par cette stack
-  # (nom fixe « dmx-net »). Les autres apps le référencent en `external: true`
-  # et appellent http://dmx-ai-router:8080.
+  # Réseau interne partagé entre les apps du VPS. Créé UNE fois hors compose
+  # (`docker network create dmx-net`, cf. étape de déploiement / workflow), donc
+  # référencé ici en `external: true`. Toutes les apps (router inclus) l'attachent
+  # de la même façon et appellent http://dmx-ai-router:8080. Cela évite le conflit
+  # « incorrect label com.docker.compose.network » quand le réseau préexiste.
   dmx-net:
+    external: true
     name: dmx-net
-    driver: bridge
