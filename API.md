@@ -241,13 +241,13 @@ Façade **compatible OpenAI** : une app existante branche le router en changeant
 uniquement sa **base URL** (`.../v1`) et sa clé. Elle envoie un corps OpenAI
 standard (`{ model?, messages }`) et reçoit une réponse OpenAI standard
 (`{ choices: [{ message: { content } }] }`). En interne, le router choisit un
-provider (ordre aléatoire + fallback).
+provider (OpenRouter prioritaire + fallback).
 
 #### Comportement du champ `model`
 
 | Cas | `model` | Provider(s) |
 |-----|---------|-------------|
-| **Défaut** (texte, aucun hint) | **ignoré** | tous ceux configurés, ordre aléatoire + fallback |
+| **Défaut** (texte, aucun hint) | **ignoré** | tous ceux configurés, OpenRouter prioritaire + fallback |
 | **Ciblage explicite** (opt-in) | **honoré** | le provider ciblé uniquement |
 | **Multimodal** (content en tableau) | **honoré** | providers vision : `openrouter`, `groq`, `nvapi`, `deepseek`, `mistral` |
 
@@ -261,7 +261,7 @@ Pour imposer un provider + modèle précis tout en égressant par le router
 
 Le router se restreint alors à ce provider et **honore le `model`** envoyé. Un
 provider inconnu renvoie **400**. Sans hint, le comportement par défaut
-(modèle ignoré, ordre aléatoire + fallback) est conservé — rétro-compatible.
+(modèle ignoré, OpenRouter prioritaire + fallback) est conservé — rétro-compatible.
 
 Providers valides : `gemini`, `groq`, `ollama`, `nvapi`, `deepseek`,
 `openrouter`, `mistral`.
