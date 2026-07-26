@@ -25,8 +25,13 @@ const { sendError } = require("./lib/api-response");
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const HOST = process.env.HOST || "0.0.0.0";
 
-// Limite de body brut alignée sur validate-chat.js (256 Ko) + marge.
-const MAX_BODY = "512kb";
+// Limite de body brut. Dimensionnée pour /v1/chat/completions en MULTIMODAL :
+// une photo est envoyée en data URI base64 (~1,37x la taille du fichier), donc
+// 512 Ko refusaient déjà une photo de téléphone compressée (413 « Body trop
+// volumineux »). /api/chat reste borné à 256 Ko par validate-chat.js, et
+// api/v1-chat.js applique sa propre borne — cette valeur n'est que le plafond
+// du parseur.
+const MAX_BODY = "12mb";
 
 const app = express();
 app.disable("x-powered-by");

@@ -24,12 +24,28 @@ const { applySecurityHeaders } = require("../lib/security-headers");
  * - Multimodal (content en tableau, ex. image_url) : restreint aux providers
  *   OpenAI-compat capables de vision, et le `model` reçu EST respecté (un modèle
  *   vision est spécifique). Providers visés : openrouter, groq, nvapi, deepseek,
- *   mistral. Prioritaire sur le hint provider.
+ *   mistral. Prioritaire sur le hint provider. Si l'app n'envoie AUCUN modèle
+ *   (cas `auto` : elle délègue le choix au router), on impose un modèle VISION
+ *   par provider — le `defaultModel` de lib/router.js est un modèle texte et
+ *   l'upstream répond alors « No endpoints found that support image input ».
  *
  * Auth : identique à /api/chat (Bearer / X-API-Key, ou HMAC X-Client-Key).
  */
 
 const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral"];
+
+// Modèle vision par défaut, par provider, quand la requête multimodale n'impose
+// pas de `model`. Un provider absent de cette table n'est PAS candidat au
+// routage multimodal : son modèle par défaut est textuel, il échouerait en 404
+// (erreur non rejouable, donc fatale pour toute la requête).
+const VISION_DEFAULT_MODELS = {
+  openrouter: "openai/gpt-4o-mini",
+};
+
+// Borne de taille propre à cette façade : le parseur global (server.js) est
+// large pour laisser passer une photo en base64, mais on refuse ici ce qui
+// dépasse, avec une erreur au format OpenAI plutôt que l'envelope 413 d'Express.
+const MAX_BODY_RAW_LENGTH = 12 * 1024 * 1024;
 
 // Ids de providers connus (source de vérité : lib/router.js) pour valider un
 // hint provider explicite.
@@ -62,6 +78,10 @@ module.exports = async (req, res) => {
 
   if (req.method !== "POST") {
     return sendOpenAiError(res, 405, "Méthode non autorisée. Utilisez POST.");
+  }
+
+  if (typeof req.body === "string" && req.body.length > MAX_BODY_RAW_LENGTH) {
+    return sendOpenAiError(res, 413, "Body trop volumineux.");
   }
 
   let body;
@@ -97,10 +117,16 @@ module.exports = async (req, res) => {
   let onlyProviders = null;
   let modelOverrides = {};
   if (isMultimodal) {
-    onlyProviders = VISION_CAPABLE;
     // Le modèle vision est spécifique : on respecte celui envoyé par l'app.
     if (typeof body.model === "string" && body.model) {
+      onlyProviders = VISION_CAPABLE;
       for (const id of VISION_CAPABLE) modelOverrides[id] = body.model;
+    } else {
+      // Aucun modèle imposé : le router choisit, mais parmi les seuls providers
+      // pour lesquels on connaît un modèle vision (sinon le defaultModel textuel
+      // du provider ferait échouer la requête).
+      onlyProviders = VISION_CAPABLE.filter((id) => VISION_DEFAULT_MODELS[id]);
+      for (const id of onlyProviders) modelOverrides[id] = VISION_DEFAULT_MODELS[id];
     }
   } else if (providerHint) {
     // Ciblage explicite : un seul provider, et le modèle reçu est honoré.

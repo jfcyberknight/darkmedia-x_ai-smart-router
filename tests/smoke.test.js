@@ -141,3 +141,100 @@ test("/v1 : sans hint provider, le body est accepté jusqu'au routage (défaut)"
   // et le comportement par défaut (pas de restriction) est bien pris.
   assert.notStrictEqual(res.statusCode, 400);
 });
+
+// Remplace temporairement lib/router par un double qui capture ses arguments,
+// et recharge api/v1-chat pour qu'il consomme ce double. Restaure tout ensuite.
+async function captureRouteChat(req, res) {
+  const routerPath = require.resolve("../lib/router");
+  const handlerPath = require.resolve("../api/v1-chat");
+  const realRouter = require("../lib/router");
+  const realExports = require.cache[routerPath].exports;
+  let captured = null;
+  require.cache[routerPath].exports = {
+    ...realRouter,
+    routeChat: async (args) => {
+      captured = args;
+      return { text: "ok", provider: "openrouter", model: "stub" };
+    },
+  };
+  delete require.cache[handlerPath];
+  try {
+    await require("../api/v1-chat")(req, res);
+  } finally {
+    require.cache[routerPath].exports = realExports;
+    delete require.cache[handlerPath];
+  }
+  return captured;
+}
+
+test("/v1 multimodal sans model : impose un modèle vision et restreint les providers", async () => {
+  process.env.AI_SMART_ROUTER_HEADER_KEY = "test-secret-key";
+  const req = {
+    method: "POST",
+    headers: { "x-api-key": "test-secret-key" },
+    body: JSON.stringify({
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Décris cette photo." },
+            { type: "image_url", image_url: { url: "data:image/jpeg;base64,AAAA" } },
+          ],
+        },
+      ],
+    }),
+  };
+  const res = mockRes();
+  const captured = await captureRouteChat(req, res);
+
+  assert.ok(captured, "routeChat doit être appelé");
+  // Sans cette restriction, le provider retombe sur son defaultModel TEXTUEL et
+  // l'upstream répond « No endpoints found that support image input » (404).
+  assert.ok(
+    Array.isArray(captured.onlyProviders) && captured.onlyProviders.length > 0,
+    "les providers doivent être restreints à ceux qui ont un modèle vision"
+  );
+  for (const id of captured.onlyProviders) {
+    assert.ok(
+      typeof captured.modelOverrides[id] === "string" && captured.modelOverrides[id],
+      `un modèle vision doit être imposé pour ${id}`
+    );
+  }
+  assert.strictEqual(res.statusCode, 200);
+});
+
+test("/v1 multimodal avec model explicite : le modèle de l'app est respecté", async () => {
+  process.env.AI_SMART_ROUTER_HEADER_KEY = "test-secret-key";
+  const req = {
+    method: "POST",
+    headers: { "x-api-key": "test-secret-key" },
+    body: JSON.stringify({
+      model: "un/modele-vision-precis",
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,AAAA" } }],
+        },
+      ],
+    }),
+  };
+  const res = mockRes();
+  const captured = await captureRouteChat(req, res);
+
+  assert.ok(captured);
+  assert.strictEqual(captured.modelOverrides.openrouter, "un/modele-vision-precis");
+});
+
+test("/v1 : un body démesuré est rejeté en 413 au format OpenAI", async () => {
+  process.env.AI_SMART_ROUTER_HEADER_KEY = "test-secret-key";
+  const handler = require("../api/v1-chat");
+  const req = {
+    method: "POST",
+    headers: { "x-api-key": "test-secret-key" },
+    body: "x".repeat(13 * 1024 * 1024),
+  };
+  const res = mockRes();
+  await handler(req, res);
+  assert.strictEqual(res.statusCode, 413);
+  assert.ok(res.body?.error?.message);
+});
