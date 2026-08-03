@@ -53,10 +53,16 @@ module.exports = async (req, res) => {
     return sendError(res, msgValidation.error, 400, "VALIDATION_ERROR");
   }
 
+  const forwardedHeaders = {
+    "x-title": req.headers["x-title"],
+    "http-referer": req.headers["http-referer"] || req.headers.referer,
+  };
+
   try {
     const result = await routeChat({
       messages: msgValidation.messages,
       model,
+      headers: forwardedHeaders,
     });
     return sendSuccess(
       res,
