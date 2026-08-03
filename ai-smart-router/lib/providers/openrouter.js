@@ -4,16 +4,29 @@
  * Pas de SDK requis : REST avec Bearer token.
  */
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "meta-llama/llama-3.1-70b-instruct";
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
-async function generate({ apiKey, model = DEFAULT_MODEL, messages }) {
+const DEFAULT_APP_TITLE = process.env.OPENROUTER_X_TITLE || "AI Smart Router";
+const DEFAULT_REFERER = process.env.OPENROUTER_HTTP_REFERER || "https://darkmedia-x.com";
+
+async function generate({ apiKey, model = DEFAULT_MODEL, messages, headers = {} }) {
   if (!apiKey) throw new Error("OPENROUTER_API_KEY manquant");
+
+  const title = headers["x-title"] || headers["X-Title"] || DEFAULT_APP_TITLE;
+  const referer =
+    headers["http-referer"] ||
+    headers["HTTP-Referer"] ||
+    headers.referer ||
+    headers.Referer ||
+    DEFAULT_REFERER;
 
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "X-Title": title,
+      "HTTP-Referer": referer,
     },
     body: JSON.stringify({
       model,

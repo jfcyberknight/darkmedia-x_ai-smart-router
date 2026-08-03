@@ -83,12 +83,12 @@ function isRetryableError(err) {
  * Essaie de générer avec une liste de modèles (principal + fallbacks).
  * Retourne le résultat ou lance la dernière erreur.
  */
-async function tryGenerateWithFallbacks({ apiKey, messages, models }) {
+async function tryGenerateWithFallbacks({ apiKey, messages, models, headers }) {
   let lastErr = null;
 
   for (const model of models) {
     try {
-      const result = await openrouter.generate({ apiKey, model, messages });
+      const result = await openrouter.generate({ apiKey, model, messages, headers });
       return result;
     } catch (err) {
       lastErr = err;
@@ -105,7 +105,7 @@ async function tryGenerateWithFallbacks({ apiKey, messages, models }) {
  * Essaie d'abord les modèles gratuits, puis fallback sur le modèle payant principal.
  * (récupérés dynamiquement depuis l'API OpenRouter).
  */
-async function routeChat({ messages, model = null }) {
+async function routeChat({ messages, model = null, headers = {} }) {
   const openrouterKey = process.env.OPENROUTER_API_KEY;
   const replicateKey = process.env.REPLICATE_API_KEY;
 
@@ -129,7 +129,7 @@ async function routeChat({ messages, model = null }) {
     }
 
     try {
-      return await tryGenerateWithFallbacks({ apiKey: openrouterKey, messages, models: modelsToTry });
+      return await tryGenerateWithFallbacks({ apiKey: openrouterKey, messages, models: modelsToTry, headers });
     } catch (err) {
       console.warn(`[router] OpenRouter échoué: ${err.message}`);
       if (!isRetryableError(err)) throw err;
