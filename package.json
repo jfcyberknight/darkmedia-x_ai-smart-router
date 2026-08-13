@@ -1,6 +1,6 @@
 {
   "name": "darkmedia-x-ai-smart-router",
-  "version": "2.0.26",
+  "version": "2.1.0",
   "description": "API auto-hébergée qui route les requêtes IA vers Gemini, Groq, NVIDIA, DeepSeek, OpenRouter, Mistral, Ollama avec ordre aléatoire et fallback automatique",
   "main": "server.js",
   "scripts": {
@@ -16,7 +16,9 @@
     "test": "node --test tests/*.test.js",
     "test:providers": "node scripts/test-providers.js",
     "test:api": "node scripts/test-api.js",
-    "test:api:prod": "node scripts/test-api-deployed.js"
+    "test:api:prod": "node scripts/test-api-deployed.js",
+    "bench": "node scripts/bench.js",
+    "bench:wrk": "bash scripts/bench-wrk.sh"
   },
   "keywords": [
     "ai",

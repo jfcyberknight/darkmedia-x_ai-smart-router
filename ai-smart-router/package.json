@@ -1,6 +1,6 @@
 {
   "name": "@jfcyberknight/ai-smart-router",
-  "version": "2.0.26",
+  "version": "2.1.0",
   "description": "API Vercel qui route les requêtes IA vers Gemini, Groq et autres providers avec fallback automatique",
   "packageManager": "pnpm@9.1.0+",
   "main": "lib/router.js",
