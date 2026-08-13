@@ -4,15 +4,49 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 ## [Unreleased]
 
-### Added
-- **Façade `/v1` — ciblage explicite de provider (opt-in)** : la façade
-  OpenAI-compatible `/v1/chat/completions` honore désormais un **hint provider**
-  (champ `provider` dans le body ou en-tête `X-AI-Provider`). Quand il est
-  fourni, le router se restreint à ce provider et **respecte le `model`** envoyé
-  (ex. `openrouter` / `openrouter/fusion`) — permettant à une app d'imposer un
-  modèle précis tout en égressant par le router (clés centralisées). Sans hint,
-  le comportement par défaut (modèle ignoré, ordre aléatoire + fallback) est
-  **inchangé**. Provider inconnu → `400`. Doc dans `API.md`/`openapi.json`.
+### Added — Performance & Observabilité
+- **Cache LRU + TTL** des réponses de chat (`lib/cache.js`) : les requêtes
+  texte identiques sont court-circuitées (hit ~2 ms au lieu de 350 ms–3 s).
+  Variables : `CACHE_ENABLED` (défaut `true`), `CACHE_TTL_SECONDS` (défaut 30),
+  `CACHE_MAX_ENTRIES` (défaut 256). Le multimodal n'est jamais caché.
+- **Timeout par provider** (`lib/http.js`, `fetchWithTimeout` + `AbortController`) :
+  au-delà de `PROVIDER_TIMEOUT_MS` (défaut 25 s), l'appel est aborté et le
+  router bascule sur le provider suivant. Les erreurs réseau (DNS, connexion
+  refusée) sont normalisées en 503 retryable — auparavant elles remontaient
+  sans `status` et le router échouait immédiatement sans fallback.
+- **`ROUTER_PREFERRED_PROVIDER`** (défaut `openrouter`) : provider testé en
+  premier. Pour réduire la variabilité de latence, cibler un provider direct
+  plus rapide (ex. `groq`).
+- **Limiteur de concurrence** (`lib/concurrency.js`) : au-delà de
+  `MAX_CONCURRENT_REQUESTS` (défaut 64), renvoie 503 + `Retry-After`. Protège
+  le conteneur contre un pic de requêtes en vol.
+- **Métriques Prometheus** (`lib/metrics.js` + `GET /metrics`) : compteurs par
+  statut HTTP, par provider (tentatives/succès/erreurs), hits/misses cache,
+  jauge de concurrence, histogramme de latence. Endpoint protégé par clé
+  partagée.
+- **Scripts de benchmark** : `npm run bench` (Node, sans dépendance) et
+  `npm run bench:wrk` (wrk multi-thread, pour tests de charge poussés).
+
+### Changed
+- **Router** : le cache lookup est effectué **avant** la vérification de
+  disponibilité des providers — un hit cache ne nécessite aucun provider
+  configuré.
+- **Router** : l'ordre des providers n'est plus aléatoire mais priorise
+  `ROUTER_PREFERRED_PROVIDER` (défaut `openrouter`), puis fallback.
+- **Tous les providers** (7) : utilisent `fetchWithTimeout` au lieu de `fetch`
+  nu, avec propagation du `timeoutMs` depuis le router.
+- **`/api/chat` et `/v1/chat/completions`** : la réponse inclut désormais un
+  champ `cached: true` quand le résultat provient du cache.
+
+### Façade `/v1` — ciblage explicite de provider (opt-in)
+- La façade OpenAI-compatible `/v1/chat/completions` honore désormais un **hint
+  provider** (champ `provider` dans le body ou en-tête `X-AI-Provider`). Quand
+  il est fourni, le router se restreint à ce provider et **respecte le `model`**
+  envoyé (ex. `openrouter` / `openrouter/fusion`) — permettant à une app
+  d'imposer un modèle précis tout en égressant par le router (clés
+  centralisées). Sans hint, le comportement par défaut (modèle ignoré, ordre
+  aléatoire + fallback) est **inchangé**. Provider inconnu → `400`. Doc dans
+  `API.md`/`openapi.json`.
 
 ### Security
 - **`index_rag.py`** : suppression de la clé API Qdrant **committée en clair** ;

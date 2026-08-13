@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { routeChat, PROVIDERS } = require("../lib/router");
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
+const metrics = require("../lib/metrics");
 
 /**
  * POST /v1/chat/completions — façade OpenAI-compatible.
@@ -50,17 +51,24 @@ module.exports = async (req, res) => {
 
   if (req.method === "OPTIONS") return res.status(204).end();
 
+  const t0 = process.hrtime.bigint();
+  const record = (status) => {
+    metrics.requestStatus(status);
+    metrics.observeDuration(Number(process.hrtime.bigint() - t0) / 1e9);
+  };
+
   // Auth (mêmes règles que /api/chat) — checkApiSecret/checkClientAuth
   // répondent au format envelope, mais le code HTTP (401) reste correct pour
   // les clients OpenAI qui ne regardent que le statut.
   const hasClientKey = req.headers["x-client-key"];
   if (hasClientKey) {
-    if (!checkClientAuth(req, res)) return;
+    if (!checkClientAuth(req, res)) { record(401); return; }
   } else {
-    if (!checkApiSecret(req, res)) return;
+    if (!checkApiSecret(req, res)) { record(401); return; }
   }
 
   if (req.method !== "POST") {
+    record(405);
     return sendOpenAiError(res, 405, "Méthode non autorisée. Utilisez POST.");
   }
 
@@ -68,15 +76,18 @@ module.exports = async (req, res) => {
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
   } catch {
+    record(400);
     return sendOpenAiError(res, 400, "Body JSON invalide.");
   }
 
   const messages = body.messages;
   if (!Array.isArray(messages) || messages.length === 0) {
+    record(400);
     return sendOpenAiError(res, 400, 'Le champ "messages" (tableau non vide) est requis.');
   }
   for (const m of messages) {
     if (!m || typeof m !== "object" || typeof m.role !== "string") {
+      record(400);
       return sendOpenAiError(res, 400, "Chaque message doit avoir un role (string) et un content.");
     }
   }
@@ -105,6 +116,7 @@ module.exports = async (req, res) => {
   } else if (providerHint) {
     // Ciblage explicite : un seul provider, et le modèle reçu est honoré.
     if (!KNOWN_PROVIDERS.has(providerHint)) {
+      record(400);
       return sendOpenAiError(
         res,
         400,
@@ -120,6 +132,7 @@ module.exports = async (req, res) => {
   try {
     const result = await routeChat({ messages, modelOverrides, onlyProviders });
     const now = Math.floor(Date.now() / 1000);
+    record(200);
     return res.status(200).json({
       id: "chatcmpl-" + crypto.randomBytes(12).toString("hex"),
       object: "chat.completion",
@@ -127,6 +140,7 @@ module.exports = async (req, res) => {
       model: result.model,
       // Champ non-standard mais utile pour le debug : quel provider a répondu.
       provider: result.provider,
+      cached: !!result.cached,
       choices: [
         {
           index: 0,
@@ -139,6 +153,7 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error("[api/v1-chat]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
+    record(status);
     return sendOpenAiError(
       res,
       status,

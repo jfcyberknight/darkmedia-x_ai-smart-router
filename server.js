@@ -20,7 +20,9 @@ const normalizeHandler = require("./api/normalize");
 const healthHandler = require("./api/health");
 const ttsHandler = require("./api/tts");
 const v1ChatHandler = require("./api/v1-chat");
+const metricsHandler = require("./api/metrics");
 const { sendError } = require("./lib/api-response");
+const { concurrencyLimiter } = require("./lib/concurrency");
 
 const PORT = parseInt(process.env.PORT, 10) || 8080;
 const HOST = process.env.HOST || "0.0.0.0";
@@ -58,20 +60,25 @@ app.get("/", vercel(healthHandler));
 app.get("/api/health", vercel(healthHandler));
 app.options("/api/health", vercel(healthHandler));
 
-// Endpoints protégés (clé partagée / HMAC).
-app.post("/api/chat", vercel(chatHandler));
+// Endpoints protégés (clé partagée / HMAC). Le limiteur de concurrence protège
+// le conteneur contre un pic de requêtes en vol (503 + Retry-After au-delà).
+app.post("/api/chat", concurrencyLimiter, vercel(chatHandler));
 app.options("/api/chat", vercel(chatHandler));
 
 // Façade OpenAI-compatible : brancher une app existante = juste changer sa
 // base URL vers .../v1 (elle continue d'envoyer/parser du OpenAI standard).
-app.post("/v1/chat/completions", vercel(v1ChatHandler));
+app.post("/v1/chat/completions", concurrencyLimiter, vercel(v1ChatHandler));
 app.options("/v1/chat/completions", vercel(v1ChatHandler));
 
-app.post("/api/normalize", vercel(normalizeHandler));
+app.post("/api/normalize", concurrencyLimiter, vercel(normalizeHandler));
 app.options("/api/normalize", vercel(normalizeHandler));
 
-app.post("/api/tts", vercel(ttsHandler));
+app.post("/api/tts", concurrencyLimiter, vercel(ttsHandler));
 app.options("/api/tts", vercel(ttsHandler));
+
+// Métriques Prometheus (protégées par clé partagée, comme /api/chat).
+app.get("/metrics", vercel(metricsHandler));
+app.options("/metrics", vercel(metricsHandler));
 
 // 404 au format envelope commun.
 app.use((req, res) => {

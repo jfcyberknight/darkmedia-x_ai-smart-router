@@ -3,6 +3,7 @@ const { routeChat } = require("../lib/router");
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
 const { applySecurityHeaders } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
+const metrics = require("../lib/metrics");
 const {
   validateBodySize,
   validateMessages,
@@ -27,16 +28,23 @@ module.exports = async (req, res) => {
     return res.status(204).end();
   }
 
+  const t0 = process.hrtime.bigint();
+  const record = (status) => {
+    metrics.requestStatus(status);
+    metrics.observeDuration(Number(process.hrtime.bigint() - t0) / 1e9);
+  };
+
   // Essayer authentification client/serveur d'abord (nouveau système)
   const hasClientKey = req.headers["x-client-key"];
   if (hasClientKey) {
-    if (!checkClientAuth(req, res)) return;
+    if (!checkClientAuth(req, res)) { record(401); return; }
   } else {
     // Sinon utiliser l'ancien système
-    if (!checkApiSecret(req, res)) return;
+    if (!checkApiSecret(req, res)) { record(401); return; }
   }
 
   if (req.method !== "POST") {
+    record(405);
     return sendError(res, "Méthode non autorisée. Utilisez POST.", 405);
   }
 
@@ -44,6 +52,7 @@ module.exports = async (req, res) => {
     typeof req.body === "string" ? req.body : (req.body && JSON.stringify(req.body)) || "";
   const sizeCheck = validateBodySize(rawBody);
   if (!sizeCheck.ok) {
+    record(413);
     return sendError(res, sizeCheck.error, 413);
   }
 
@@ -51,12 +60,14 @@ module.exports = async (req, res) => {
   try {
     body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
   } catch {
+    record(400);
     return sendError(res, "Body JSON invalide.", 400);
   }
 
   const { messages, models: modelOverrides } = body;
   const msgValidation = validateMessages(messages);
   if (!msgValidation.ok) {
+    record(400);
     return sendError(res, msgValidation.error, 400);
   }
   const modelOverridesValid = validateModelOverrides(modelOverrides);
@@ -66,18 +77,21 @@ module.exports = async (req, res) => {
       messages: msgValidation.messages,
       modelOverrides: modelOverridesValid,
     });
+    record(200);
     return sendSuccess(
       res,
       {
         content: result.text,
         provider: result.provider,
         model: result.model,
+        cached: !!result.cached,
       },
       "Réponse générée"
     );
   } catch (err) {
     console.error("[api/chat]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
+    record(status);
     return sendError(res, err.message || "Erreur lors du routage vers les APIs IA.", status);
   }
 };
