@@ -30,7 +30,7 @@ const metrics = require("../lib/metrics");
  * Auth : identique à /api/chat (Bearer / X-API-Key, ou HMAC X-Client-Key).
  */
 
-const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral"];
+const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral", "opencode-go"];
 
 // Ids de providers connus (source de vérité : lib/router.js) pour valider un
 // hint provider explicite.
