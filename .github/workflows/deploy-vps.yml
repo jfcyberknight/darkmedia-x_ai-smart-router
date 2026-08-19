@@ -45,7 +45,11 @@ jobs:
       VPS_HOST: ${{ vars.VPS_HOST || 'vps-c4db969c.vps.ovh.ca' }}
       VPS_USER: ${{ vars.VPS_USER || 'ubuntu' }}
       VPS_PORT: ${{ vars.VPS_PORT || '22' }}
-      DEPLOY_DIR: /opt/darkmedia-x_ai-smart-router
+      # Répertoire accessible en écriture par l'utilisateur SSH (ubuntu) SANS
+      # sudo : les anciens /opt/* nécessitaient un sudo (indisponible sur ce
+      # VPS). Chemin volontairement aligné sur /home/ubuntu/apps/* (cf.
+      # apartment-repair-tracker).
+      DEPLOY_DIR: /home/ubuntu/apps/ai-smart-router
       REPO_URL: https://github.com/jfcyberknight/darkmedia-x_ai-smart-router.git
     steps:
       - name: Configurer la clé SSH
@@ -71,8 +75,8 @@ jobs:
           ssh -i ~/.ssh/id_vpsctl -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "set -e
             DIR='$DEPLOY_DIR'
             if [ ! -d \"\$DIR/.git\" ]; then
-              sudo mkdir -p \"\$DIR\"
-              sudo chown \$(id -u):\$(id -g) \"\$DIR\"
+              # Sans sudo : DEPLOY_DIR est un répertoire de l'utilisateur SSH.
+              mkdir -p \"\$DIR\"
               git clone '$REPO_URL' \"\$DIR\"
             fi
             cd \"\$DIR\"

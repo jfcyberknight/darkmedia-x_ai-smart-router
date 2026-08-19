@@ -66,11 +66,10 @@ depuis les secrets à jour). Rien à faire côté serveur.
 Si tu préfères gérer le `.env` à la main sur le serveur :
 
 ```bash
-sudo mkdir -p /opt/darkmedia-x_ai-smart-router
-sudo chown "$(id -u):$(id -g)" /opt/darkmedia-x_ai-smart-router
+mkdir -p /home/ubuntu/apps/ai-smart-router
 git clone https://github.com/jfcyberknight/darkmedia-x_ai-smart-router.git \
-  /opt/darkmedia-x_ai-smart-router
-cd /opt/darkmedia-x_ai-smart-router
+  /home/ubuntu/apps/ai-smart-router
+cd /home/ubuntu/apps/ai-smart-router
 cp .env.example .env   # remplir header key + ≥1 clé provider
 docker network create dmx-net
 docker compose up -d --build
