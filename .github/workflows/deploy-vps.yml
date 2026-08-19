@@ -11,13 +11,15 @@ name: Deploy VPS (ai-smart-router privé)
 #
 # Secrets requis (Settings → Secrets and variables → Actions) :
 #   - VPS_SSH_KEY                 : clé privée SSH du VPS (OBLIGATOIRE).
+#   - VPS_KNOWN_HOSTS             : empreinte de la clé d'hôte du VPS
+#                                   (OBLIGATOIRE — vérification anti-MITM).
 #   - AI_SMART_ROUTER_HEADER_KEY  : secret d'auth partagé (OBLIGATOIRE, ≥8 car.).
 #   - Au moins UNE clé provider   : GEMINI_API_KEY / GROQ_API_KEY / NVAPI_API_KEY
 #                                   / DEEPSEEK_API_KEY / OPENROUTER_API_KEY /
 #                                   MISTRAL_API_KEY (ou OLLAMA_HOST).
 #   - Optionnels                  : OLLAMA_API_KEY, OLLAMA_HOST, ELEVENLABS_API_KEY,
 #                                   TOGETHER_API_KEY, TTS_API_KEY, TTS_API_URL,
-#                                   VPS_KNOWN_HOSTS.
+#                                   OPENCODE_GO_API_KEY.
 # Variables (optionnelles) : VPS_HOST / VPS_USER / VPS_PORT.
 
 on:
@@ -55,14 +57,14 @@ jobs:
             echo "::error::Secret VPS_SSH_KEY absent — voir docs/secrets.md."
             exit 1
           fi
+          if [ -z "$VPS_KNOWN_HOSTS" ]; then
+            echo "::error::Secret VPS_KNOWN_HOSTS absent — refus de déployer sans vérification de la clé d'hôte (risque MITM sur le .env). Ajoutez l'empreinte SSH du VPS dans les GitHub Secrets."
+            exit 1
+          fi
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_vpsctl
           chmod 600 ~/.ssh/id_vpsctl
-          if [ -n "$VPS_KNOWN_HOSTS" ]; then
-            printf '%s\n' "$VPS_KNOWN_HOSTS" >> ~/.ssh/known_hosts
-          else
-            ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          fi
+          printf '%s\n' "$VPS_KNOWN_HOSTS" >> ~/.ssh/known_hosts
 
       - name: Cloner / mettre à jour le dépôt sur le VPS
         run: |
@@ -87,6 +89,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENCODE_GO_API_KEY: ${{ secrets.OPENCODE_GO_API_KEY }}
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
@@ -106,14 +109,15 @@ jobs:
           for name in \
             AI_SMART_ROUTER_HEADER_KEY \
             GEMINI_API_KEY GROQ_API_KEY NVAPI_API_KEY DEEPSEEK_API_KEY \
-            OPENROUTER_API_KEY MISTRAL_API_KEY OLLAMA_API_KEY OLLAMA_HOST \
-            ELEVENLABS_API_KEY TOGETHER_API_KEY TTS_API_KEY TTS_API_URL; do
+            OPENROUTER_API_KEY MISTRAL_API_KEY OPENCODE_GO_API_KEY \
+            OLLAMA_API_KEY OLLAMA_HOST ELEVENLABS_API_KEY TOGETHER_API_KEY \
+            TTS_API_KEY TTS_API_URL; do
             eval "val=\${$name:-}"
             if [ -n "$val" ]; then
               printf '%s=%s\n' "$name" "$val" >> env.generated
             fi
           done
-          if ! grep -qE '^(GEMINI|GROQ|NVAPI|DEEPSEEK|OPENROUTER|MISTRAL)_API_KEY=' env.generated \
+          if ! grep -qE '^(GEMINI|GROQ|NVAPI|DEEPSEEK|OPENROUTER|MISTRAL|OPENCODE_GO)_API_KEY=' env.generated \
              && ! grep -q '^OLLAMA_HOST=' env.generated; then
             echo "::warning::Aucune clé provider définie — /api/chat renverra 503 tant qu'aucun provider n'est configuré."
           fi

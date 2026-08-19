@@ -2,6 +2,11 @@
 .vercel
 node_modules
 .env*.local
+# Artefacts de build/runtime (correctif F3) : ne doivent pas être versionnés.
+ai-smart-router/deploy.log
+ai-smart-router/deployments.json
+ai-smart-router/test_output.txt
+ai-smart-router/vercel.json.bak
 
 .vercel
 .env*.local

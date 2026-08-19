@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const { routeChat, PROVIDERS } = require("../lib/router");
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const metrics = require("../lib/metrics");
 
 /**
@@ -41,12 +41,10 @@ function sendOpenAiError(res, status, message, type = "invalid_request_error") {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp, X-AI-Provider"
-  );
+  applyCors(res, req, {
+    allowHeaders:
+      "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp, X-AI-Provider",
+  });
   applySecurityHeaders(res);
 
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -129,8 +127,20 @@ module.exports = async (req, res) => {
     }
   }
 
+  // Correctif M2 : isole le cache par client (scope dérivé du crédential).
+  const clientScope = crypto
+    .createHash("sha256")
+    .update(
+      req.headers["x-client-key"] ||
+        req.headers["x-api-key"] ||
+        req.headers.authorization ||
+        ""
+    )
+    .digest("hex")
+    .slice(0, 16);
+
   try {
-    const result = await routeChat({ messages, modelOverrides, onlyProviders });
+    const result = await routeChat({ messages, modelOverrides, onlyProviders, clientScope });
     const now = Math.floor(Date.now() / 1000);
     record(200);
     return res.status(200).json({

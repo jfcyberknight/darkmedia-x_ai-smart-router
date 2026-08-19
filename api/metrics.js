@@ -1,5 +1,5 @@
 const { checkApiSecret } = require("../lib/auth");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendError } = require("../lib/api-response");
 const metrics = require("../lib/metrics");
 
@@ -11,12 +11,10 @@ const metrics = require("../lib/metrics");
  * cette clé dans son Authorization header.
  */
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Authorization, X-API-Key"
-  );
+  applyCors(res, req, {
+    allowMethods: "GET, OPTIONS",
+    allowHeaders: "Authorization, X-API-Key",
+  });
   applySecurityHeaders(res);
 
   if (req.method === "OPTIONS") return res.status(204).end();

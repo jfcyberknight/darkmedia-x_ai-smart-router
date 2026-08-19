@@ -1,6 +1,7 @@
+const crypto = require("crypto");
 const { routeChat } = require("../lib/router");
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 
 const MAX_TEXT_LENGTH = 32 * 1024; // 32 KB
@@ -80,9 +81,7 @@ L'utilisateur Jean Dupont a fini son test avec 85% aujourd'hui le 13 mars 2026.
  * Protégé par API_SECRET.
  */
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp");
+  applyCors(res, req);
   applySecurityHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -129,8 +128,20 @@ module.exports = async (req, res) => {
     { role: "user", content: `## Texte à traiter\n\n${text}` },
   ];
 
+  // Correctif M2 : isole le cache par client (scope dérivé du crédential).
+  const clientScope = crypto
+    .createHash("sha256")
+    .update(
+      req.headers["x-client-key"] ||
+        req.headers["x-api-key"] ||
+        req.headers.authorization ||
+        ""
+    )
+    .digest("hex")
+    .slice(0, 16);
+
   try {
-    const result = await routeChat({ messages });
+    const result = await routeChat({ messages, clientScope });
     let raw = (result.text || "").trim();
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) raw = jsonMatch[1].trim();

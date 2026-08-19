@@ -16,6 +16,7 @@ test("le router charge tous les providers (aucun require manquant)", () => {
     "mistral",
     "nvapi",
     "ollama",
+    "opencode-go",
     "openrouter",
   ]);
   assert.strictEqual(typeof routeChat, "function");
@@ -35,6 +36,7 @@ test("chaque module provider se charge sans erreur", () => {
     "openrouter",
     "mistral",
     "ollama",
+    "opencode-go",
   ]) {
     const mod = require(`../lib/providers/${id}`);
     assert.strictEqual(typeof mod.generate, "function", `${id}.generate`);
@@ -125,6 +127,7 @@ test("/v1 : sans hint provider, le body est accepté jusqu'au routage (défaut)"
   for (const k of [
     "GEMINI_API_KEY", "GROQ_API_KEY", "NVAPI_API_KEY", "DEEPSEEK_API_KEY",
     "OPENROUTER_API_KEY", "MISTRAL_API_KEY", "OLLAMA_API_KEY", "OLLAMA_HOST",
+    "OPENCODE_GO_API_KEY",
   ]) {
     delete process.env[k];
   }

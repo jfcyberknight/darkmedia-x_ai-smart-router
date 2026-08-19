@@ -1,5 +1,5 @@
 const { checkApiSecret } = require('../lib/auth');
-const { applySecurityHeaders } = require('../lib/security-headers');
+const { applySecurityHeaders, applyCors } = require('../lib/security-headers');
 const { sendSuccess, sendError } = require('../lib/api-response');
 
 const COQUI_URL = process.env.TTS_API_URL || 'https://app.coqui.ai/api/v2/samples';
@@ -18,9 +18,7 @@ const TOGETHER_TTS_URL = 'https://api.together.ai/v1/audio/speech';
  * Réponse: { audio: base64, contentType: "audio/mp3" }
  */
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+  applyCors(res, req);
   applySecurityHeaders(res);
 
   if (req.method === 'OPTIONS') {

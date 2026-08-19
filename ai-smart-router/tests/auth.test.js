@@ -43,7 +43,7 @@ describe("checkApiSecret", () => {
 
     assert.equal(result, false);
     assert.equal(res._status, 401);
-    assert.match(res._body.message, /API_SECRET/i);
+    assert.match(res._body.error.message, /AI_SMART_ROUTER_HEADER_KEY|API_SECRET/i);
   });
 
   it("rejette si API_SECRET trop court (< 8 chars)", () => {
@@ -66,7 +66,7 @@ describe("checkApiSecret", () => {
 
     assert.equal(result, false);
     assert.equal(res._status, 401);
-    assert.match(res._body.message, /manquante/i);
+    assert.match(res._body.error.message, /manquante/i);
   });
 
   it("accepte un token valide via Authorization: Bearer", () => {
@@ -107,7 +107,7 @@ describe("checkApiSecret", () => {
 
     assert.equal(result, false);
     assert.equal(res._status, 401);
-    assert.match(res._body.message, /invalide/i);
+    assert.match(res._body.error.message, /invalide/i);
   });
 
   it("préfère X-API-Key si les deux headers sont présents", () => {

@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 # Image de production pour l'auto-hébergement (VPS OVH).
+# Note : tag de base non épinglé par digest (voir audit F5) — à figer si possible.
 FROM node:22-alpine
 
 # Métadonnées
@@ -14,9 +15,10 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # 1) Dépendances (couche cache) — installe uniquement les deps de prod.
+#    npm ci : build reproductible à partir du package-lock.json commité.
 #    --ignore-scripts évite le hook `prepare` (install-git-hooks) hors dépôt git.
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # 2) Code applicatif nécessaire au serveur autonome.
 COPY server.js ./

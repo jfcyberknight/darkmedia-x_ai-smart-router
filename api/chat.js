@@ -1,7 +1,8 @@
+const crypto = require("crypto");
 const { routeChat } = require("../lib/router");
 // Refresh for env variables
 const { checkApiSecret, checkClientAuth } = require("../lib/auth");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 const metrics = require("../lib/metrics");
 const {
@@ -19,9 +20,7 @@ const {
  * Réponse au format envelope commun (id, statut, donnees: { content, provider, model }, message).
  */
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp");
+  applyCors(res, req);
   applySecurityHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -72,10 +71,25 @@ module.exports = async (req, res) => {
   }
   const modelOverridesValid = validateModelOverrides(modelOverrides);
 
+  // Correctif M2 : isole le cache par client (scope dérivé du crédential
+  // présenté) pour éviter qu'un consommateur ne reçoive la réponse cachée d'un
+  // autre. Hash sha256 tronqué : simple discriminant, aucun secret en clair.
+  const clientScope = crypto
+    .createHash("sha256")
+    .update(
+      req.headers["x-client-key"] ||
+        req.headers["x-api-key"] ||
+        req.headers.authorization ||
+        ""
+    )
+    .digest("hex")
+    .slice(0, 16);
+
   try {
     const result = await routeChat({
       messages: msgValidation.messages,
       modelOverrides: modelOverridesValid,
+      clientScope,
     });
     record(200);
     return sendSuccess(
