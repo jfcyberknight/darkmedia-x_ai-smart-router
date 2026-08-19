@@ -103,9 +103,11 @@ module.exports = async (req, res) => {
       "Réponse générée"
     );
   } catch (err) {
+    // F2 : détail journalisé côté serveur, message générique côté client
+    // (pas de fuite des réponses/erreurs internes des providers).
     console.error("[api/chat]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
     record(status);
-    return sendError(res, err.message || "Erreur lors du routage vers les APIs IA.", status);
+    return sendError(res, "Erreur lors du routage vers les APIs IA.", status);
   }
 };

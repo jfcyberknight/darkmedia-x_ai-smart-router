@@ -1,5 +1,5 @@
 const { checkAuth } = require("../lib/auth");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 const { fetchFreeOpenRouterModels } = require("../lib/router");
 
@@ -46,9 +46,7 @@ async function generateWithOpenRouter(apiKey, model, text, voice) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Client-Key, X-Signature, X-Timestamp");
+  applyCors(res, req);
   applySecurityHeaders(res);
 
   if (req.method === "OPTIONS") return res.status(204).end();

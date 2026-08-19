@@ -1,5 +1,4 @@
 // Force redeploy to apply Vercel env variables
-const { PROVIDERS } = require("../lib/router");
 const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 
@@ -19,11 +18,8 @@ module.exports = async (req, res) => {
   }
   sendSuccess(
     res,
-    {
-      ok: true,
-      service: "ai-smart-router",
-      providers: PROVIDERS.map((p) => p.id),
-    },
+    // F1 : ne plus divulguer la liste des providers sur un endpoint public.
+    { ok: true, service: "ai-smart-router" },
     "Service opérationnel"
   );
 };

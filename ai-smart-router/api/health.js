@@ -1,6 +1,5 @@
 // Force redeploy to apply Vercel env variables
-const { PROVIDERS } = require("../lib/router");
-const { applySecurityHeaders } = require("../lib/security-headers");
+const { applySecurityHeaders, applyCors } = require("../lib/security-headers");
 const { sendSuccess, sendError } = require("../lib/api-response");
 
 /**
@@ -8,8 +7,7 @@ const { sendSuccess, sendError } = require("../lib/api-response");
  * Public : pas d’authentification, pour sondes de disponibilité et monitoring.
  */
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, X-API-Key");
+  applyCors(res, req, { allowMethods: "GET, OPTIONS", allowHeaders: "Authorization, X-API-Key" });
   applySecurityHeaders(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") {
@@ -17,11 +15,7 @@ module.exports = async (req, res) => {
   }
   sendSuccess(
     res,
-    {
-      ok: true,
-      service: "ai-smart-router",
-      providers: PROVIDERS.map((p) => p.id),
-    },
+    { ok: true, service: "ai-smart-router" },
     "Service opérationnel"
   );
 };

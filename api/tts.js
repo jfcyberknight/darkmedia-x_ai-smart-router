@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
       } else {
         const err = await elevenResponse.text();
         console.error('[api/tts] ElevenLabs error:', err);
-        return sendError(res, 'Erreur ElevenLabs: ' + err, 502);
+        return sendError(res, 'Erreur du service TTS.', 502);
       }
     } else if (TOGETHER_API_KEY) {
       const ttsModel = model || 'cartesia/sonic-2';
@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
       } else {
         const err = await togetherResponse.text();
         console.error('[api/tts] Together error:', err);
-        return sendError(res, 'Erreur Together: ' + err, 502);
+        return sendError(res, 'Erreur du service TTS.', 502);
       }
     } else if (OPENROUTER_API_KEY) {
       const ttsModel = model || 'elevenlabs/eleven-turbo-v2';
@@ -131,7 +131,7 @@ module.exports = async (req, res) => {
       } else {
         const err = await openrouterResponse.text();
         console.error('[api/tts] OpenRouter error:', err);
-        return sendError(res, 'Erreur OpenRouter: ' + err, 502);
+        return sendError(res, 'Erreur du service TTS.', 502);
       }
     } else if (COQUI_API_KEY && COQUI_URL) {
       const coquiResponse = await fetch(COQUI_URL, {
@@ -153,7 +153,7 @@ module.exports = async (req, res) => {
       } else {
         const err = await coquiResponse.text();
         console.error('[api/tts] Coqui error:', err);
-        return sendError(res, 'Erreur Coqui: ' + err, 502);
+        return sendError(res, 'Erreur du service TTS.', 502);
       }
     } else {
       return sendError(res, 'Aucune API TTS configurée. Définissez ELEVENLABS_API_KEY, TOGETHER_API_KEY, OPENROUTER_API_KEY ou TTS_API_KEY+TTS_API_URL.', 503);

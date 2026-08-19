@@ -161,13 +161,14 @@ module.exports = async (req, res) => {
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     });
   } catch (err) {
+    // F2 : détail journalisé côté serveur, message générique côté client.
     console.error("[api/v1-chat]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
     record(status);
     return sendOpenAiError(
       res,
       status,
-      err.message || "Erreur lors du routage vers les APIs IA.",
+      "Erreur lors du routage vers les APIs IA.",
       "api_error"
     );
   }

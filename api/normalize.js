@@ -151,8 +151,9 @@ module.exports = async (req, res) => {
     if (err instanceof SyntaxError) {
       return sendError(res, "Réponse du modèle non valide (JSON invalide).", 422);
     }
+    // F2 : détail journalisé côté serveur, message générique côté client.
     console.error("[api/normalize]", err.message);
     const status = err.status || (err.message?.includes("échoué") ? 502 : 500);
-    return sendError(res, err.message || "Erreur lors de l'extraction.", status);
+    return sendError(res, "Erreur lors de l'extraction.", status);
   }
 };
