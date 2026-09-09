@@ -29,6 +29,7 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 // Limite de body brut alignée sur validate-chat.js (256 Ko) + marge.
 const MAX_BODY = "512kb";
+const MAX_VISION_BODY = process.env.MAX_VISION_BODY || "15mb";
 
 const app = express();
 app.disable("x-powered-by");
@@ -36,6 +37,9 @@ app.disable("x-powered-by");
 // Corps de requête livré en CHAÎNE BRUTE (comme Vercel sans bodyParser) :
 // les handlers chat/normalize/tts font eux-mêmes le JSON.parse et
 // contrôlent la taille via validateBodySize. On accepte tout content-type.
+app.use("/v1/chat/completions",
+  express.text({ type: () => true, limit: MAX_VISION_BODY, defaultCharset: "utf-8" })
+);
 app.use(
   express.text({ type: () => true, limit: MAX_BODY, defaultCharset: "utf-8" })
 );

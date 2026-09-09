@@ -160,7 +160,7 @@ module.exports = async (req, res) => {
         <p class="tagline">Neural Network Gateway</p>
 
         <div class="links-container">
-            <a href="https://darkmedia-x.com/linktree/" class="btn" target="_blank">Linktree</a>
+            <a href="https://cordex-bsl.ca/linktree/" class="btn" target="_blank">Linktree</a>
             <a href="/docs" class="btn primary">Documentation API</a>
         </div>
     </main>

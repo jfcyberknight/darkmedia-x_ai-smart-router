@@ -1,3 +1,7 @@
+# 2.1.1 — 2026-09-09
+
+- Autoriser les photos de 10 Mo encodées en base64 sur la façade multimodale du serveur Docker; limite configurable MAX_VISION_BODY. Autres routes limitées à 512kb.
+
 # Changelog
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.

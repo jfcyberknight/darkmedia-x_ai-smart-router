@@ -189,3 +189,7 @@ Ce projet suit les standards **prompt-ai** :
 
 ---
 *API prête pour Gemini, Groq et extensible pour d’autres fournisseurs.*
+
+### Limite image du serveur Docker
+
+`MAX_VISION_BODY` configure la limite HTTP de `/v1/chat/completions` (15mb par défaut, pour 10 Mo binaires encodés en base64). Les autres routes restent limitées à 512kb. Cette option appartient au serveur autonome et ne change pas les limites de la plateforme Vercel. Authentification et isolation du cache par client restent appliquées.

@@ -1,7 +1,7 @@
 {
   "name": "darkmedia-x-ai-smart-router",
-  "version": "2.1.0",
-  "description": "API auto-hébergée qui route les requêtes IA vers Gemini, Groq, NVIDIA, DeepSeek, OpenRouter, Mistral, Ollama avec ordre aléatoire et fallback automatique",
+  "version": "2.1.1",
+  "description": "API auto-h\u00e9berg\u00e9e qui route les requ\u00eates IA vers Gemini, Groq, NVIDIA, DeepSeek, OpenRouter, Mistral, Ollama avec ordre al\u00e9atoire et fallback automatique",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

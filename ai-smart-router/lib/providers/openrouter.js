@@ -7,7 +7,7 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "google/gemini-2.5-flash";
 
 const DEFAULT_APP_TITLE = process.env.OPENROUTER_X_TITLE || "AI Smart Router";
-const DEFAULT_REFERER = process.env.OPENROUTER_HTTP_REFERER || "https://darkmedia-x.com";
+const DEFAULT_REFERER = process.env.OPENROUTER_HTTP_REFERER || "https://cordex-bsl.ca";
 
 async function generate({ apiKey, model = DEFAULT_MODEL, messages, headers = {} }) {
   if (!apiKey) throw new Error("OPENROUTER_API_KEY manquant");
