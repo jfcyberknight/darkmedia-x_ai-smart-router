@@ -30,7 +30,7 @@ const metrics = require("../lib/metrics");
  * Auth : identique à /api/chat (Bearer / X-API-Key, ou HMAC X-Client-Key).
  */
 
-const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral", "opencode-go"];
+const VISION_CAPABLE = ["openrouter", "groq", "nvapi", "deepseek", "mistral", "opencode-go", "cli-bridge"];
 
 // Ids de providers connus (source de vérité : lib/router.js) pour valider un
 // hint provider explicite.
@@ -106,10 +106,16 @@ module.exports = async (req, res) => {
   let onlyProviders = null;
   let modelOverrides = {};
   if (isMultimodal) {
-    onlyProviders = VISION_CAPABLE;
-    // Le modèle vision est spécifique : on respecte celui envoyé par l'app.
-    if (typeof body.model === "string" && body.model) {
-      for (const id of VISION_CAPABLE) modelOverrides[id] = body.model;
+    // Si le modèle commence par "cli/", on route uniquement vers cli-bridge.
+    if (typeof body.model === "string" && body.model.startsWith("cli/")) {
+      onlyProviders = ["cli-bridge"];
+      modelOverrides["cli-bridge"] = body.model;
+    } else {
+      onlyProviders = VISION_CAPABLE;
+      // Le modèle vision est spécifique : on respecte celui envoyé par l'app.
+      if (typeof body.model === "string" && body.model) {
+        for (const id of VISION_CAPABLE) modelOverrides[id] = body.model;
+      }
     }
   } else if (providerHint) {
     // Ciblage explicite : un seul provider, et le modèle reçu est honoré.
