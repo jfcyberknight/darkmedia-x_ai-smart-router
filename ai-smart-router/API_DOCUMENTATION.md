@@ -105,7 +105,7 @@ Envoie une conversation au router IA. Un provider est choisi aléatoirement parm
 #### Exemple cURL
 
 ```bash
-curl -X POST "https://ai-api.darkmedia-x.com/api/chat" \
+curl -X POST "https://ai-api.cordex-bsl.ca/api/chat" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer VOTRE_API_SECRET" \
   -d '{"messages":[{"role":"user","content":"Qu'\''est-ce qu'\''un microservice ?"}]}'
@@ -177,7 +177,7 @@ Envelope commun avec l’objet extrait dans `donnees` (exemple) :
 #### Exemple cURL
 
 ```bash
-curl -X POST "https://ai-api.darkmedia-x.com/api/normalize" \
+curl -X POST "https://ai-api.cordex-bsl.ca/api/normalize" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer VOTRE_API_SECRET" \
   -d '{"text":"L'\''utilisateur Jean Dupont a fini son test avec 85% aujourd'\''hui le 13 mars 2026."}'
@@ -228,7 +228,7 @@ Pas de body.
 #### Exemple cURL
 
 ```bash
-curl -X GET "https://ai-api.darkmedia-x.com/api/health"
+curl -X GET "https://ai-api.cordex-bsl.ca/api/health"
 ```
 
 ---
